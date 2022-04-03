@@ -1,4 +1,4 @@
-package java8.day01.Lambda01;
+package java8.day01.lambda01;
 
 /**
  * projectName:  java_learing

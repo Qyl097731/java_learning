@@ -1,6 +1,6 @@
-package java8.day02;
+package java8.day02.stream01;
 
-import java8.day01.SelectEmployee.Employee;
+import java8.day01.selectEmployee.Employee;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

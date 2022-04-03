@@ -1,4 +1,4 @@
-package java8.day01.Lambda02;
+package java8.day01.lambda02;
 
 import org.junit.jupiter.api.Test;
 

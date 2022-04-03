@@ -1,4 +1,4 @@
-package java8.day01.SelectEmployee;
+package java8.day01.selectEmployee;
 
 /**
  * projectName:  java_learing

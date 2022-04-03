@@ -1,4 +1,4 @@
-package java8.day01.SelectEmployee;
+package java8.day01.selectEmployee;
 
 
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package java8.day01.SelectEmployee;
+package java8.day01.selectEmployee;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,11 +14,13 @@ import java.util.List;
  */
 public class SelectObjects {
     static List<Employee> list = new ArrayList<>(Arrays.asList(
-            new Employee(31, 301),
-            new Employee(32, 302),
-            new Employee(33, 303)
+            new Employee(31, 301, Employee.Status.FREE),
+            new Employee(32, 302, Employee.Status.BUSY),
+            new Employee(59, 306, Employee.Status.FREE),
+            new Employee(99, 301, Employee.Status.VOCATION),
+            new Employee(99, 301, Employee.Status.FREE),
+            new Employee(33, 303, Employee.Status.VOCATION)
     ));
-
     public static List<Employee> filterEmployee(List<Employee>list,MyFilter<Employee>mp){
         List<Employee>resultList = new ArrayList<>();
 

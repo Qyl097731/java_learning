@@ -1,4 +1,4 @@
-package java8.day01.SelectEmployee;
+package java8.day01.selectEmployee;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,4 +18,12 @@ import lombok.NoArgsConstructor;
 public class Employee {
     private int age;
     private int salary;
+    private Status status;
+
+
+    public enum Status{
+        FREE,
+        BUSY,
+        VOCATION
+    }
 }
