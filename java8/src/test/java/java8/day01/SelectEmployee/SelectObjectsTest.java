@@ -1,10 +1,10 @@
 package java8.day01.SelectEmployee;
 
-import org.junit.Test;
+
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.*;
 
 /**
  * projectName:  java_learing
