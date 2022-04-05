@@ -3,7 +3,6 @@ package java8.day03.optional01;
 import java8.day01.selectEmployee.Employee;
 import org.junit.jupiter.api.Test;
 
-import javax.swing.text.html.Option;
 import java.util.Optional;
 
 /**

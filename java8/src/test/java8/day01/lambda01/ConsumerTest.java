@@ -3,6 +3,7 @@ package java8.day01.lambda01;
 import org.junit.jupiter.api.Test;
 
 import java.util.Comparator;
+import java.util.function.Consumer;
 
 /**
  * projectName:  java_learing
@@ -16,7 +17,7 @@ class ConsumerTest {
 
     @Test
     void test01() {
-        Consumer<String>con = System.out::println;
+        Consumer<String> con = System.out::println;
         con.accept("hello");
     }
     @Test
