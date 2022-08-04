@@ -21,7 +21,6 @@ class MyInit {
         }
     }
 }
-
 public class AtomicReferenceFieldUpdaterDemo {
 
 
