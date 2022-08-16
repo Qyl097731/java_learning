@@ -6,15 +6,6 @@
  * copyright(c) 2020 南晓18卓工
  */
 
-/**
- * @title: Test10.java
- * @package fushi
- * @description: TODO
- * @author: qiuyiliang
- * @date: 2022年3月24日 下午9:58:52
- * @version: V1.0
-*/
-
 public class Test10 {
 
 	/**
