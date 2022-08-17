@@ -10,14 +10,14 @@ import lombok.Data;
  */
 public class FiledTest {
     public static void main(String[] args) {
-        orderTest();
+        new FiledTest().orderTest();
     }
 
     public void hello(){
         System.out.println("hello");
     }
 
-    public static void orderTest(){
+    public void orderTest(){
         Order order = new Order();
         order.setId(100);
         System.out.println(order.getId());
@@ -25,10 +25,10 @@ public class FiledTest {
         order.setName("order");
         System.out.println(order.getName());
     }
+    @Data
+    class Order{
+        private Integer id;
+        private String name;
+    }
+}
 
-}
-@Data
-class Order{
-    private Integer id;
-    private String name;
-}
