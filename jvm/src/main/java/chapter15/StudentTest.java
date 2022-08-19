@@ -1,6 +1,5 @@
 package chapter15;
 
-import com.sun.webkit.WebPage;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -12,11 +11,11 @@ import java.util.List;
  * @author: qyl
  */
 public class StudentTest {
-    static List<WebPage> webpages = new ArrayList<WebPage>();
+    static List<Webpage> webpages = new ArrayList<Webpage>();
 
     public static void createWebPages(){
         for (int i = 0 ; i < 100 ; i++){
-            WebPage wp = new WebPage();
+            Webpage wp = new Webpage();
             wp.setUrl("http:///www."+Integer.toHexString(i) + ".com");
             wp.setContent(Integer.toHexString(i));
             webpages.add(wp);
@@ -43,13 +42,18 @@ public class StudentTest {
     }
 }
 
+@Data
+class Webpage{
+    private String url;
+    private String content;
+}
 
 
 @Data
 class Student{
     private int id;
     private String name;
-    private List<WebPage> history = new ArrayList<>();
+    private List<Webpage> history = new ArrayList<>();
 
     public Student(int id,String name){
         super();
@@ -57,7 +61,7 @@ class Student{
         this.name = name;
     }
 
-    public void visit(WebPage webPage) {
-        history.add(webPage);
+    public void visit(Webpage webpage) {
+        history.add(webpage);
     }
 }

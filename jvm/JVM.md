@@ -345,3 +345,69 @@ JVM误以为对象还在使用，无法回收，造成内存泄漏   ； 即还�
 
 是否涉及GC，溢出是指内存泄漏导致了内存不够，必须GC却不能GC。
 
+### 内存泄漏的情况
+
+- 静态集合类	
+
+  容器如果是静态的，生命周期同JVM一致，这个时候如果含某个对象的引用，就会导致对象无法被释放
+
+- 单例模式
+
+  静态类型同上述一致
+
+- 内部类
+
+  内部类被引用时，外部类就算不引用了，仍旧不能释放
+
+- 各种连接未关闭
+
+- 变量不合理的作用域
+
+  尽量把创建对象的作用域尽量的小
+
+- 改变哈希值
+
+  对象存进hashset之后，修改了需要参与哈希值计算的字段，那么当前对象无法被删除
+
+- 缓存泄露
+
+  把对象引入缓存，被遗忘。可以利用弱引用WeakReference去替换强引用。
+
+- 监听器和回调
+
+  客户端在你实现的API中注册回调，没显示取消，就会积聚，需要确保回调被立即当作垃圾回收（用弱引用）
+
+### OSL语言
+
+```bash
+select * from 类全名
+select Object v.elementData from ***.ArrayList
+select as retained set * form 类全名
+select * from 引用地址
+
+select * from char[] s where s.@length > 10
+select * from java.lang.String s where s.value != null
+select toString(f.path.value) from java.io.File f
+```
+
+### Jprofile
+
+**数据采集方式**
+
+- Sampling样本采集
+
+  每隔一定时间抽取堆栈的信心进行分析
+
+  **优点**:对CPU的影响很小
+
+  **缺点**：功能没重构强大
+
+- Instrumentation重构模式
+
+  全功能模式，在class加载之前把Jprofile相关功能代码写入到需要分析的class的字节码中，对运行的JVM有一定影响。
+
+  **优点**：监控准确。
+
+  **缺点**：若需要分析的class较多，会较大的影响性能
+
+  
