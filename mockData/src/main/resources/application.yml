@@ -1,0 +1,15 @@
+mybatis-plus:
+    mapper-locations: classpath:mybatis/xml/*.xml
+spring:
+    datasource:
+        driver-class-name: oracle.jdbc.OracleDriver
+        password:
+        url:
+        username:
+        hikari:
+            connection-timeout: 600000
+            maximum-pool-size: 24
+
+    jackson:
+        date-format: yyyy-MM-dd HH:mm:ss
+        time-zone: GMT+8
