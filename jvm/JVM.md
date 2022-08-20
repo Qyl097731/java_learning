@@ -207,13 +207,139 @@ https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5
 
 ### 虚拟机参数
 
-- -Xmx60m -Xms60m 设置堆大小
+#### 标准参数   （-开头的参数）
 
-- -XX:SurvivorRatio=8 设置新生代中 Eden 和 Survivor占比 8：1：1
+通过java -help查看所有标准参数
 
+#### 非标准参数
+
+##### -X开头的参数
+
+java -X 查看所有以-X开头的参数
+
+- -Xint 禁用JIT，解释执行所有的字节码，运行最慢
+- -Xcomp 所有字节码首次使用都被编译成本地代码，然后再执行
+- -Xmixed 混合模式，默认模式，让JIT根据程序运行情况，有选择地将代码编译
+- -Xms<size> 设置初始堆大小
+- -Xmx<size> 设置最大堆大小
+- -Xss<size> 设置java线程堆栈大小
+
+##### -XX开头的参数
+
+- -XX:NewSize=1024m 设置新生代地初始大小为1024M
+- -XX:MaxGCPauseMills=500 表示设置GC停顿时间500ms
+- -XX:GCTimeRatio=19 设置吞吐量
+- -XX:NewRatio=2 设置新生代与老年代比例
+- -XX:HeapDumpPath= xxx.hprof 只当heap转存文件路径
+- -XX:SurvivorRatio=8 设置新生代中 Eden 和 Survivor占比 8：1：1 默认是8
 - -XX:+HeapDumpOnOutOfMemoryError 在程序OOM时，导出应用程序的当前堆快照
+- -XX:PrintFlagFinal 输出所有参数名称和默认值
 
-  -XX:HeapDumpPath: 指定堆快照保存位置
+##### 常用JVM参数
+
+- -XX:PrintCommandLineFlags 让程序运行前打印出用户手动设置或者JVM自动设置的XX选项
+
+- -XX:PrintFlagsInitial 打印所有参数地默认值
+
+- -XX:PrintFlagFinal 输出运行时所有参数名称和默认值
+
+- -XX:PrintVMOptions 查看所有参数
+
+- -Xmn<size> 设置年轻代初始大小以及最大大小，推荐为堆地3/8
+
+- -XX:MaxNewSize=<size> 设置年轻代地最大值
+
+- -XX:+UseAdaptiveSizePolicy 设置开启自动调整eden 和 survivor分配策略，默认开启
+
+- -XX:PretenureSizeThreadshol=<size> 大于size的对象直接分配在老年代 单位为字节
+
+- -XX:MaxTenuringThreshold=<num> 设置每次MinorGC 还存活的对象年龄加一，最大年龄
+
+- -XX:+PrintTenuringDistribution JVM每次MinorGC之后都打印Survivor中的对象的年龄分布
+
+- -XX:TargetSurvivorRatio 表示MinorGC之后Survivor占用的期望比例
+
+- -XX:PemSize=<size> 设置永久代初始值
+
+- -XX:MaxPerSize = <size> 设置永久代最大值
+
+- -XX:MetaspaceSize 初始元空间大小
+
+- -XX:MaxMetaspaceSize 最大空间，默认没限制
+
+- -XX:+UseCompressedOops 压缩对象指针
+
+- -XX:UseCompressedClassPointers 压缩类指针
+
+- -XX:CompressedClassSpaceSize 设置Klass Metaspace的大小 默认1G
+
+- -XX:MaxDirectMemorySize 指定直接内存容量，若未指定，默认和java堆最大值一样
+
+- -XX:+HeapDumpOnOutOfMemoryError 表示内存出现OOM的时候，把Heap转存Dump到文件以便后续分析
+
+- -XX:+HeapDumpBeforeFullGC 表示在出现FullGC之前生成Heap转储文件
+
+- -XX:HeapDumpPath=<path> 指定heap转储文件路径
+
+- -XX:OnOutOfMemoryError 指定一个可行性程序或脚本路径，发生OOM时执行该脚本
+
+- -XX:ParallelGCThread=N 限制线程数量 默认开启和CPU数据相同的线程数
+
+- -XX:+UseConcMarkSweepGC 指定使用CMS进行GC 会自动ParNew + CMS + Serial Old的组合
+
+- -XX:CMSInitialtingOccupanyFraction  设置堆内存使用率的阈值，一大超过就回收
+
+- -XX:+UseCMSCompactAtFullCollection 执行玩Full GC进行压缩，避免出现碎片，会延长停顿时间
+
+- -XX:CMSFullGCsBeforeCompaction 设置多少Full GCs后要进行内存压缩
+
+- -XX:ParallelCMSThreads 设置CMS线程数量
+
+- -XX:MaxGCPauseMillis 设置期望达到的最大GC停顿时间，JVM并不保证达到
+
+- -XX:ParallelGCThraed 设置STW GC线程数的值，最多8
+
+- -XX:ConcGCThreads 设置并发标记线程数
+
+- -XX:InitialtingHeapOccupancyPercent 设置触发并发GC周期的JAVA堆占用率阈值 默认45
+
+- -XX:+UseG1GC 设置G1垃圾回收器
+
+- -XX:G1HeapRegionSize 设置Region的大小，目标根据最小的java堆划分出2048个区域
+
+- -verbose:gc 输出gc日志到控制台 等同于  -XX:+PrintGC
+
+- -XX:+PrintGCDetails 打印GC时详细信息、进程结束也会打印一次
+
+- -XX:+PrintGCTimeStamps 打印GC时间戳
+
+- -XX:+PrintHeapAtGC 在GC前后时打印Heap
+
+- -Xloggc<file> 输出gc日志到file中
+
+  
+
+### 虚拟机参数添加方式
+
+- Eclipse
+
+- IDEA
+
+- 运行jar包
+
+  ```bash
+  java [jvm参数] -jar xxx.jar
+  ```
+
+- 通过Tomcat运行war包
+
+  - linux中在tomcat/bin/catalina.sh中添加配置JAVA_OPTS="[JVM参数]"
+  - windows在catalina.bat中添加配置set "JAVA_OPTS=[JVM参数]"
+
+- 程序运行过程中
+
+  - jinfo -flag <name> = <value> <pid>上设置非boolean参数
+  - jinfo -flag [+|-]<name> <pid> 设置boolean类型参数
 
 ### 性能优化三部曲
 
@@ -390,7 +516,9 @@ select * from java.lang.String s where s.value != null
 select toString(f.path.value) from java.io.File f
 ```
 
-### Jprofile
+### 	工具
+
+#### Jprofile
 
 **数据采集方式**
 
@@ -410,4 +538,116 @@ select toString(f.path.value) from java.io.File f
 
   **缺点**：若需要分析的class较多，会较大的影响性能
 
-  
+
+#### 	Arthas
+
+优点： 可视化的JVM监控器都不适用于linux环境，Arthas适用于linux环境
+
+启动：java -jar arthas-root.jar [pid]
+
+**命令**: https://arthas.gitee.io/doc/commands.html
+
+- dashboard 
+- thread
+- quit   退出客户端
+- stop\shotdown 关闭arthas服务端以及客户端
+- web console 通过http://127.0.0.1:8563/进行访问
+- cat ~/logs/arthas/arthas.log 查看日志
+- java -jar arthas-boot.jar -h   查看帮助
+- jvm
+- **monitor** 方法执行监控
+- watch 方法执行的观测（返回值、参数）
+- trace 方法内部调用路径，输出方法路径上的每个节点上耗时
+- stack 输出当前方法被调用的调用路径
+- tt 方法执行数据的时空隧道，记录下指定方法每次调用的入参和返回信息，对这些在不同时间调用进行观测
+- jprofile 启动jprofile
+
+#### 	JMS
+
+对性能影响很小，非嵌入，可以开着做压力测试
+
+##### 需要参数
+
+- -XX:+UnlockCommercialFeatures
+- -XX:+FlightRecorder
+
+##### 事件类型
+
+- 瞬时事件（Instant Event),用户关心发生与否，异常、线程启动事件
+- 持续时间（Duration Event），用户关心的是他们的持续时间，例如垃圾回收事件
+- 计时事件（Timed Event），用户关心的是他们的持续时间，如垃圾回收事件
+- 取样事件（Simple Event),是周期性取样的事件
+
+##### 启动方式
+
+- 图形化结合JVM参数
+  - -XX:StartFlightRecording=delay=5,duration=20s,filename=xxx.jfr,settings=profile MyApp
+  - java -XX:StartFlightRecording=maxage=10m,maxsize=100m,name=Somlabel MyApp （不对JFR进行限制，会导致JFR很快的填满硬盘空间。）超过10分钟或者100m就不再手机
+- 使用jcmd
+- 使用插件
+
+#### 火焰图
+
+追求极致性能情况下，可以了解cpu在干什么
+
+#### 	Visual  VM 
+
+eclipse 插件
+
+#### TProfiler
+
+展示某段时间内的top method
+
+#### Btrace
+
+动态追踪
+
+## GC日志
+
+### GC类型
+
+#### Minor GC
+
+回收新生代
+
+####  Major GC
+
+回收老年代，会先触发Minor GC
+
+#### Full GC
+
+回收堆和方法区
+
+老年代空间不足、方法区空间不足、显示调用System.gc()
+
+#### Mixed GC 
+
+收集整个新生代和部分老年代 仅G1支持
+
+### GC日志
+
+- minor gc : [区域 回收前大小,回收后大小（总大小）] 回收前大小,回收后大小（总大小）) ]
+
+- full gc :  [区域 回收前大小,回收后大小（总大小）] [区域  回收前大小,回收后大小（总大小）) ] [区域  回收前大小,回收后大小（总大小）) ] 回收前大小,回收后大小（总大小）) ]
+
+- <u>若是新生代总大小指的是Eden + 一个survivor</u>
+
+- 时间
+
+  - user：执行用户态代码所用时间，即执行此进程所使用的实际CPU时间，不包括其他进程或者此进程阻塞的时间，在GC时指GC线程的占用的CPU时间	
+
+  - sys：执行内核态所消耗的CPU时间，即在内核执行系统调用或等待系统时间所使用的CPU时间
+
+  - rea：程序从开始到结束所用的时间
+
+### GC日志分析工具
+
+- GCeasy
+
+  https://gceasy.io/
+
+- GCViewer
+
+- GChisto
+
+- HPjmeter
