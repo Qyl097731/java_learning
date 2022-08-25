@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+						http://www.springframework.org/schema/beans/spring-beans.xsd
+						http://www.springframework.org/schema/aop
+						http://www.springframework.org/schema/aop/spring-aop.xsd
+						http://www.springframework.org/schema/context
+						http://www.springframework.org/schema/context/spring-context.xsd
+						http://www.springframework.org/schema/tx
+						http://www.springframework.org/schema/tx/spring-tx.xsd
+						http://www.springframework.org/schema/task
+						http://www.springframework.org/schema/task/spring-task-3.2.xsd">
+
+    <!-- 启用注解 -->
+    <context:annotation-config/>
+    <!--扫描任务-->
+    <task:annotation-driven />
+   <!-- <bean id="swaggerConfig" class="com.nsec.config.SwaggerConfig"></bean>-->
+    <!-- 启动组件扫描，排除@Controller组件，该组件由SpringMVC配置文件扫描 -->
+    <context:component-scan base-package="com.nsec">
+        <context:exclude-filter type="annotation"
+                                expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+
+    <bean name="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+
+    <!--数据库配置-->
+    <context:property-placeholder location="classpath:dbconfig.properties"/>
+    <!-- 阿里 druid数据库连接池 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+          destroy-method="close">
+        <!-- 数据库基本信息配置 -->
+        <property name="url" value="${db.url}"/>
+        <property name="username" value="${db.username}"/>
+        <property name="password" value="${db.password}"/>
+        <property name="driverClassName" value="${db.driverClassName}"/>
+        <property name="filters" value="${db.filters}"/>
+        <!-- 最大并发连接数 -->
+        <property name="maxActive" value="${db.maxActive}"/>
+        <!-- 初始化连接数量 -->
+        <property name="initialSize" value="${db.initialSize}"/>
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="${db.maxWait}"/>
+        <!-- 最小空闲连接数 -->
+        <property name="minIdle" value="${db.minIdle}"/>
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="${db.timeBetweenEvictionRunsMillis}"/>
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="${db.minEvictableIdleTimeMillis}"/>
+        <property name="validationQuery" value="${db.validationQuery}"/>
+        <property name="testWhileIdle" value="${db.testWhileIdle}"/>
+        <property name="testOnBorrow" value="${db.testOnBorrow}"/>
+        <property name="testOnReturn" value="${db.testOnReturn}"/>
+        <property name="maxOpenPreparedStatements" value="${db.maxOpenPreparedStatements}"/>
+        <!-- 打开removeAbandoned功能 -->
+        <property name="removeAbandoned" value="${db.removeAbandoned}"/>
+        <!-- 1800秒，也就是30分钟 -->
+        <property name="removeAbandonedTimeout" value="${db.removeAbandonedTimeout}"/>
+        <!-- 关闭abanded连接时输出错误日志 -->
+        <property name="logAbandoned" value="${db.logAbandoned}"/>
+        <property name="proxyFilters">
+            <list>
+                <ref bean="log-filter"/>
+            </list>
+        </property>
+    </bean>
+    <bean id="log-filter" class="com.alibaba.druid.filter.logging.Slf4jLogFilter">
+        <property name="connectionLogEnabled" value="false"/>
+        <property name="statementLogEnabled" value="false"/>
+        <property name="resultSetLogEnabled" value="false"/>
+        <property name="statementExecutableSqlLogEnable" value="false"/>
+    </bean>
+
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="delete*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception"/>
+            <tx:method name="insert*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception"/>
+            <tx:method name="update*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception"/>
+            <tx:method name="save*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+
+    <!-- 事务处理 -->
+    <aop:config>
+        <aop:pointcut id="pc" expression="execution(* com.nsec.service..*.*(..))"/>
+        <aop:advisor pointcut-ref="pc" advice-ref="txAdvice"/>
+    </aop:config>
+
+    <!-- spring 国际化 -->
+    <bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource">
+        <property name="basenames">
+            <list>
+                <value>messages</value>
+            </list>
+        </property>
+        <property name="useCodeAsDefaultMessage" value="true"/>
+        <property name="defaultEncoding" value="utf-8"/>
+    </bean>
+    <bean id="localeResolver" class="org.springframework.web.servlet.i18n.SessionLocaleResolver">
+    </bean>
+
+    <!-- 配置mybatis mapper接口 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.nsec.dao.*.**"/>
+        <property name="sqlSessionTemplateBeanName" value="sqlSessionTemplate"/>
+    </bean>
+
+    <!-- 配置mybatis -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="configLocation" value="classpath:mybatis/mybatis-config-muli.xml"></property>
+        <!-- mapper扫描 ,包括jar里的-->
+        <property name="mapperLocations" value="classpath*:mybatis/*/*.xml"></property>
+    </bean>
+
+    <bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg ref="sqlSessionFactory"/>
+    </bean>
+
+
+    <!-- ================ Shiro start ================ -->
+    <!--securityManager安全管理器 -->
+
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="realms">
+            <list>
+                <bean id="ShiroRealm" class="com.nsec.plugin.shiro.ShiroRealm"></bean>
+            </list>
+        </property>
+        <!--  <property name="cacheManager" ref="cacheManager"/>-->
+        <property name="sessionManager" ref="sessionManager"/>
+    </bean>
+
+
+    <!-- 项目自定义的shiro Redis -->
+    <bean id="shiroSessionDao" class="com.nsec.plugin.shiro.ShiroSessionRedisDao"></bean>
+    <bean id="shiroSessionFactory" class="com.nsec.plugin.shiro.ShiroSessionFactory"></bean>
+    <bean id="shiroSessionRedisUtil" class="com.nsec.plugin.shiro.ShiroSessionRedisUtil" init-method="init">
+        <property name="redisAccessTemp" ref="redisAccess"/>
+        <!-- 设置shrio会话超时时间，默认60分钟(3600000)-->
+        <property name="sessionTimeout" value="${system.session.timeout}"/>
+    </bean>
+    <bean id="authInfoRedisUtil" class="com.nsec.plugin.shiro.AuthInfoRedisUtil" init-method="init">
+        <!--<property name="userServiceTemp" ref="userService"/>-->
+    </bean>
+    <!-- 自定义会话管理器 -->
+    <!--<bean id="sessionManager" class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">-->
+    <bean id="sessionManager" class="com.nsec.plugin.shiro.NsecShrioSessionManager">
+        <!-- 设置全局会话超时时间，默认30分钟(1800000)   -1为不过期，同时需在ShiroSessionRedisUtil设置 -->
+        <property name="globalSessionTimeout" value="${system.session.timeout}"/>
+        <!-- 是否在会话过期后会调用SessionDAO的delete方法删除会话 默认true-->
+        <property name="deleteInvalidSessions" value="false"/>
+        <!-- 是否开启会话验证器任务 默认true -->
+        <property name="sessionValidationSchedulerEnabled" value="false"/>
+        <!-- 会话验证器调度时间 -->
+        <property name="sessionValidationInterval" value="1800000"/>
+        <property name="sessionFactory" ref="shiroSessionFactory"/>
+        <property name="sessionDAO" ref="shiroSessionDao"/>
+        <!-- 默认JSESSIONID，同tomcat/jetty在cookie中缓存标识相同，修改用于防止访问404页面时，容器生成的标识把shiro的覆盖掉 -->
+        <property name="sessionIdCookie">
+            <bean class="org.apache.shiro.web.servlet.SimpleCookie">
+                <constructor-arg name="name" value="SHRIOSESSIONID"/>
+            </bean>
+        </property>
+        <property name="sessionListeners">
+            <list>
+                <bean class="com.nsec.plugin.shiro.ShiroSessionListener"/>
+            </list>
+        </property>
+    </bean>
+
+
+    <!-- Shiro Filter -->
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <!-- 要求登录时的链接(登录页面地址)，非必须的属性，默认会自动寻找Web工程根目录下的"/login.jsp"页面 -->
+        <property name="loginUrl" value="/public/index.html"/>
+        <!-- 登录成功后要跳转的连接(本例中此属性用不到，因为登录成功后的处理逻辑在LoginController里硬编码) -->
+        <!-- <property name="successUrl" value="/onlineservice/login" /> -->
+        <!-- 用户访问未对其授权的资源时，所显示的连接 -->
+        <property name="unauthorizedUrl" value="/public/index.html"/>
+        <property name="filters">
+            <map>
+                <!--将重写了的FormAuthenticationFilter.onAccessDenied方法的类注入到其中-->
+                <entry key="authc" value-ref="nsecFormAuthenticationFilter"></entry>
+            </map>
+        </property>
+
+        <!--拦截器的优先级：从上到下，从左到右，如果有匹配的拦截器就会阻断并返回-->
+        <property name="filterChainDefinitions">
+            <value>
+                /public/** = anon
+                /common/rsa = anon
+                /qhmuli/login = anon
+                /druid/** = anon
+                /open/** = anon
+                /** = anon
+                <!--/** = authc-->
+            </value>
+        </property>
+    </bean>
+    <!-- 保证实现了Shiro内部lifecycle函数的bean执行 -->
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor">
+    </bean>
+    <!--手动指定cookie-->
+    <bean id="rememberMeCookie" class="org.apache.shiro.web.servlet.SimpleCookie">
+        <constructor-arg value="rememberMe"/>
+        <property name="httpOnly" value="true"/>
+        <property name="maxAge" value="604800"/><!-- 7天 -->
+    </bean>
+
+    <!-- rememberMe管理器 -->
+    <bean id="rememberMeManager"
+          class="org.apache.shiro.web.mgt.CookieRememberMeManager">
+        <property name="cipherKey"
+                  value="#{T(org.apache.shiro.codec.Base64).decode('7SYRedk3n1O8Vx3AozYqWw==')}" />
+        <!--注入自定义cookie(主要是设置寿命, 默认的一年太长)-->
+        <property name="cookie" ref="rememberMeCookie"/>
+    </bean>
+    <!-- ================ Shiro end ================ -->
+
+
+    <!-- ================ redis start ================ -->
+    <bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
+        <property name="maxTotal" value="${redis.pool.maxTotal}"/>
+        <property name="maxIdle" value="${redis.pool.maxIdle}"/>
+        <property name="maxWaitMillis" value="${redis.pool.maxWaitMillis}"/>
+        <property name="testOnBorrow" value="${redis.pool.testOnBorrow}"/>
+    </bean>
+
+    <bean id="jedisPool" class="redis.clients.jedis.JedisPool">
+        <constructor-arg name="poolConfig" ref="jedisPoolConfig"/>
+        <constructor-arg name="host" value="${redis.server.host}"/>
+        <constructor-arg name="port" value="${redis.server.port}"/>
+        <constructor-arg name="timeout" value="${redis.server.timeout}"/>
+        <constructor-arg name="password" value="${redis.server.auth}"/>
+        <constructor-arg name="database" value="${system.cache.database}"/>
+    </bean>
+
+
+    <!-- redis访问类 -->
+    <bean id="redisAccess" class="com.nsec.cache.redis.util.RedisAccess">
+        <property name="jedisPool" ref="jedisPool"/>
+    </bean>
+
+    <bean id="cacheAopAspect" class="com.nsec.cache.redis.aop.CacheAopAspect">
+        <property name="redisAccess" ref="redisAccess"/>
+    </bean>
+
+
+    <!-- ================ redis end ================ -->
+
+</beans>
