@@ -1,0 +1,21 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+# iml文件
+.idea
+
+./*.iml
+
+# BlueJ files
+*.ctxt
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
