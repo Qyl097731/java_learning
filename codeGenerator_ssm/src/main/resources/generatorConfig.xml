@@ -21,11 +21,12 @@
             <property name="constructorBased" value="false"/>
         </commentGenerator>
         <!-- 数据库连接-->
+
         <jdbcConnection
-                driverClass="oracle.jdbc.OracleDriver"
-                connectionURL=""
-                userId=""
-                password="">
+                driverClass="com.mysql.cj.jdbc.Driver"
+                connectionURL="jdbc:mysql://192.168.0.230:3306/waterenv_jn?characterEncoding=utf8&amp;useSSL=true&amp;useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=Hongkong"
+                userId="C##YHDR"
+                password="root">
         </jdbcConnection>
 
 
@@ -34,24 +35,27 @@
             <property name="forceBigDecimals" value="false"/>
         </javaTypeResolver>
         <!-- 生成model模型，对应的包，存放位置可以指定具体的路径,如/ProjectName/src，也可以使用MAVEN来自动生成 -->
-        <javaModelGenerator targetPackage="com.nsec.entity.monPoint" targetProject="D:/java_learning/codeGenerator/src/main/java">
+        <javaModelGenerator targetPackage="com.nsec.entity.rt"
+                            targetProject="D:/java_learning/codeGenerator_ssm/src/main/java">
             <!-- 在targetPackage的基础上，根据数据库的schema再生成一层package，最终生成的类放在这个package下，默认为false -->
             <property name="enableSubPackages" value="true"/>
             <!-- 设置是否在getter方法中，对String类型字段调用trim()方法 -->
             <property name="trimStrings" value="false"/>
         </javaModelGenerator>
         <!--对应的xml mapper文件  -->
-        <sqlMapGenerator targetPackage="com.nsec.dao.xml.monPoint" targetProject="D:/java_learning/codeGenerator/src/main/java">
+        <sqlMapGenerator targetPackage="com.nsec.dao.xml.rt"
+                         targetProject="D:/java_learning/codeGenerator_ssm/src/main/java">
             <property name="enableSubPackages" value="true"/>
         </sqlMapGenerator>
 
         <!-- 对应的dao接口 -->
-        <javaClientGenerator type="XMLMAPPER" targetPackage="com.nsec.dao.monPoint" targetProject="D:/java_learning/codeGenerator/src/main/java">
+        <javaClientGenerator type="XMLMAPPER" targetPackage="com.nsec.dao.rt"
+                             targetProject="D:/java_learning/codeGenerator_ssm/src/main/java">
             <property name="enableSubPackages" value="true"/>
         </javaClientGenerator>
 
         <!-- 表名对应生成的实体 -->
-        <table tableName="T_ZT_MON_POINT_BASIC_INFO" domainObjectName="MonPointBasicInfoEntity"
+        <table tableName="t_yhdr_sm_rt_user_role" domainObjectName="RtUserRoleEntity"
                enableCountByExample="false" enableUpdateByExample="false"
                enableDeleteByExample="false" enableSelectByExample="false"
                selectByExampleQueryId="false"/>
