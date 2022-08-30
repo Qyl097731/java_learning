@@ -1,5 +1,7 @@
 package day05;
 
+import common.ListNode;
+
 /**
  * @description
  * @date:2022/8/28 14:01
