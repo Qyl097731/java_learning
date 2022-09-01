@@ -10,7 +10,7 @@ import common.ListNode;
  */
 public class Pro25_01 {
     public static void main(String[] args) {
-        ListNode head = ListNode.createList(new int[]{1, 2,3,4});
+        ListNode head = ListNode.createList(new int[]{1});
 
         ListNode.print(new Solution25_01().reverseKGroup(head, 2));
     }
