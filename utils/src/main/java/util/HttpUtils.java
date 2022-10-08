@@ -1,4 +1,4 @@
-package com.njxzc.utils;
+package util;
 
 /**
  * projectName:  epidemicSystem
