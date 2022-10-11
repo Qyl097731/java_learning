@@ -68,6 +68,79 @@ public class NumricDP {
 }
 ```
 
+### 悬线法
+
+针对求给定矩阵中满足某条件的极大矩阵，比如“面积最大的长方形、正方形”“周长最长的矩形等等”。
+
+> **悬线法的基本思路：**维护三个二维数组，Left,Right,Up数组。
+>
+> -   Left数组存储从map[i][j]这个点出发，满足条件能到达的最左边地方。
+>
+> -   Right数组存储从map[i][j]这个点出发，满足条件能到达的最右边地方。
+>
+> -   Up数组比较耿直，直接存储从这点以上满足条件的能到达的最大长度。
+> -   Left 、 Right 数组都是单调栈的思想体现，如Left到达的最左边地方就是单调栈中找的最左边比他小的数
+
+```java
+/**
+ * @description
+ * @date:2022/10/10 18:17
+ * @author: qyl
+ */
+public class SuspensionDP {
+    static int n, m;
+    static int[][] map, l, r, up;
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        n = scanner.nextInt();
+        m = scanner.nextInt();
+        map = new int[2010][2010];
+        l = new int[2010][2010];
+        r = new int[2010][2010];
+        up = new int[2010][2010];
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                map[i][j] = Integer.parseInt(scanner.next());
+                l[i][j] = r[i][j] = j;
+                up[i][j] = 1;
+            }
+        }
+
+        for (int i = 1; i <= n; i++) {
+            for (int j = 2; j <= m; j++) {
+                if (map[i][j] != map[i][j - 1]) {
+                    l[i][j] = l[i][j - 1];
+                }
+            }
+        }
+        for (int i = 1; i <= n; i++) {
+            for (int j = m - 1; j >= 1; j--) {
+                if (map[i][j + 1] != map[i][j]) {
+                    r[i][j] = r[i][j + 1];
+                }
+            }
+        }
+        int square = 1;
+        int seq = 1;
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                if (i != 1 && map[i][j] != map[i - 1][j]) {
+                    up[i][j] = up[i - 1][j] + 1;
+                    l[i][j] = Math.max(l[i][j], l[i - 1][j]);
+                    r[i][j] = Math.min(r[i][j], r[i - 1][j]);
+                }
+                seq = Math.max(seq, up[i][j] * (r[i][j] - l[i][j] + 1));
+                square = Math.max(square, Math.min(up[i][j], r[i][j] - l[i][j] + 1));
+            }
+        }
+        System.out.println(square * square);
+        System.out.println(seq);
+    }
+}
+
+```
+
 
 
 ### 状态DP
@@ -139,5 +212,116 @@ class Solution {
         return res.toString();
     }
 }
+```
+
+## 数据结构
+
+### LCA
+
+> 倍增的思想 来解决查找树中两个节点的最近公共祖先节点
+>
+> 时间复杂度：预处理O（nlogn） 查询O(logn) 
+>
+> 如果暴力一个节点一个节点想上找必然太慢，所以想到了倍增的思想进行处理。
+>
+> - 首先让两个节点较深的节点跳到和另一个节点同样的深度，通过二进制&的方式来做差，加速上跳；
+> - 然后依旧采用二进制&的方式来做差，让两个节点同时往上跳，找寻各自到父亲路径前的最后一个节点A，B，最后在返回的是A与B再次往上跳一次的点，即公共父亲节点。
+> - fa存储当前i节点网上跳了$2^i$之后到达的节点
+
+```c++
+#include<bits/stdc++.h>
+using namespace std;
+const int N = 1e5+5;
+
+int tot,n,q;
+
+int x,y,a,b,k;
+
+struct Edge {
+    int v,nex;
+} edge[N*2];
+
+int head[N],dep[N],fa[N][21];
+
+void addedge(int u,int v) {
+    edge[++tot].v = v;
+    edge[tot].nex = head[u];
+    head[u] = tot;
+}
+
+void dfs(int u,int f) {
+    dep[u] = dep[f]+1;
+    fa[u][0] = f;
+    for(int i = 1; i <= 20 ; i++)
+        fa[u][i] = fa[fa[u][i-1]][i-1];
+    for(int i = head[u]; ~i ; i = edge[i].nex) {
+        int v = edge[i].v;
+        if(v!=f)
+            dfs(v,u);
+    }
+}
+
+int lca(int a,int b) {
+    if(dep[a] < dep[b])
+        swap(a,b);
+    int df = dep[a] - dep[b];
+    for(int i = 0 ; i < 21 ; i ++)
+        if(df&(1<<i))
+            a = fa[a][i];
+    if(a == b)
+        return a;
+    for(int i = 20; i >= 0 ; i --)
+        if(fa[a][i]!=fa[b][i]) {
+            a = fa[a][i];
+            b = fa[b][i];
+        }
+    return fa[a][0];
+}
+
+int dist(int a,int b) {
+    return dep[a] + dep[b] - 2*dep[lca(a,b)];
+}
+
+int main() {
+    std::ios::sync_with_stdio(false);
+    memset(head,-1,sizeof(head));
+    memset(fa,0,sizeof(fa));
+    cin>>n;
+    for(int i = 1; i <= n-1 ; i ++) {
+        int u,v;
+        cin>>u>>v;
+        addedge(u,v);
+        addedge(v,u);
+    }
+    dfs(1,0);
+    cin>>q;
+    while(q--) {
+        cin>>x>>y>>a>>b>>k;
+
+        int res = dist(a,b);
+        if(res <= k && (k-res)%2 == 0) {
+            cout<<"YES\n";
+            continue;
+        }
+
+        res = dist(a,x) + dist(y,b) + 1;
+        if(res <= k && (k-res)%2 == 0) {
+            cout<<"YES\n";
+            continue;
+        }
+
+        res = dist(a,y) + dist(x,b) + 1;
+        if(res <= k && (k-res)%2 == 0) {
+            cout<<"YES\n";
+            continue;
+        }
+
+        cout<<"NO\n";
+    }
+
+}
+
+
+
 ```
 
