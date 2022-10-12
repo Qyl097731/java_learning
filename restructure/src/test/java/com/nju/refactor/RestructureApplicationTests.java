@@ -1,9 +1,7 @@
-package com.nju.restructure;
+package com.nju.refactor;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
 class RestructureApplicationTests {
 
     @Test
