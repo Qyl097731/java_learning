@@ -101,15 +101,80 @@
 
 例子：DataTester 调试一下，看看JVM中堆栈变化
 
-### 函数对象取代函数
+### 类的抽取
 
-原因：如果某个函数存在了很多变量且关于这些变量的计算，可能是因为设计不佳，应该抽取到一个类--->高内聚
+如果多个函数总是在同时间段出现，可以考虑抽离成新的对象。可以更好的并发编程，是不是锁粒度减小，但是如果要同时锁定两者的时候可能就要充分考虑事务问题了。
 
-在实现了高内聚之后，在进行内部重构当然更加便捷！
+### 以函数对象取代函数
+
+当临时变量过多了之后再想抽取函数，会导致当前类存在过多的变量，内聚就会大大降低。
+
+<b>函数对象：</b>把这个函数所涉及的临时变量都放到一个对象中，作为该对象的字段。在初始化的时候对这些字段进行赋值。之后把函数体提取过来，作为该对象的compute()函数。
+之后再对这个大的函数进行分解~
+
+```java
+/**
+ * @Description 修改前
+**/
+class Account{
+    int gamma(int inputVal, int quantity, int yearToDate){
+        int importantValue1 = (inputVal * quantity) + delta();
+        int importantValue2 = (inputVal * yearToDate) + 100;
+        if((yearToDate - importantValue1) > 100) importantValue2 -= 20;
+        int importantValue3 = importantValue2 * 7;  
+        return importantValue3 - 2 * importantValue1;
+    } 
+}
+
+/**
+ * @Description 修改后
+**/
+class Gamma{
+    // step1
+    private final Account account;
+    private int inputVal;
+    private int quantity;
+    private int yearToDate;
+    private int importantValue1;
+    private int importantValue2;
+    private int importantValue3;
+    
+    // step2
+    Gamma(Account account, int inputValue, int quantity, int yearToDate){
+        this.account = account;       
+        this.inputValue = inputValue;
+        this.quantity = quantity;
+        this.yearToDate = yearToDate;
+    }     
+    
+    // step3
+    // 做完前四步之后就可以对compute函数进行简化抽取了，略
+    int compute(){
+        int importantValue1 = (inputVal * quantity) + account.delta();
+        int importantValue2 = (inputVal * yearToDate) + 100;
+        if((yearToDate - importantValue1) > 100) importantValue2 -= 20;
+        int importantValue3 = importantValue2 * 7;  
+        return importantValue3 - 2 * importantValue1;
+    }
+
+}
+
+class Account{
+    // step4 委托Gamma来计算
+    int gamma(int inputVal,int quantity, int yearToDate){
+        return new Gamma(this,inputVal,quantity,yearToDate).compute();
+    }
+}
+
+```
+
+### 替换算法
+
+如果要替换一个算法，不动就算法，把新算法实现，实现之后通过新旧算法的删除进行对比，正确才替换。
 
 ### 总结
 
-就是高内聚，实现内部尽可能的相关性
+就是低耦合，就是类之间尽可能少相关，类内部高的相关性，一个类尽量要符合单一职责。
 
 ## chapter7
 
@@ -158,11 +223,212 @@ class AccountType{
 
 <b>技巧：</b> 如果出现了很多地方对Account中interest的引用，就可以通过<b>委托</b>来实现。
 
-### 类的抽泣
 
-如果多个函数总是在同时间段出现，可以考虑抽离成新的对象。可以更好的并发编程，是不是锁粒度减小，但是如果要同时锁定两者的时候可能就要充分考虑事务问题了。
+### 类内联
 
-### 总结
+如果类承担的职责太小，且与另一个类有较大的关联时，可以进行内联。
 
-就是低耦合，就是类之间尽可能少相关，类内部高的相关性。
+<b>做法：</b> 先把需要原始类类中的所有public函数移动到目标类，然后把所有对原始类的调用，都变成目标类的调用。
 
+### 隐藏委托关系
+
+<b>简单地说</b> 更好地封装，减少对外暴露具体的实现细节。
+
+```java
+/**
+ * @Description 修改前
+**/
+class Person{
+    Department department;
+    
+    public Department getDepartment(){
+        return department;
+    }
+
+    public void setDepartment(Department department){
+        this.department = department;
+    }
+}
+
+class Department{
+    private  String chargeCode;
+    private Person manager;
+    
+    public Department(Person manager){
+        this.manager = manager;
+    }
+
+    public Person getManager(){
+        return manager;
+    }
+}
+```
+
+那么我作为一个调用者，想知道某人的经理是谁，就会如下操作:`manager = stuff.getDepartment().getManager();`
+这就暴露了Department的工作原理，直到经理这个信息时保存在Department中。
+
+```java
+/**
+* @Description 委托函数 隐藏实现细节
+**/
+class Person{
+    Department department;
+    
+    public void setDepartment(Department department){
+        this.department = department;
+    }
+    public Person getManager(){
+        return department.getManager();
+    }
+
+}
+
+class Department{
+    private  String chargeCode;
+    private Person manager;
+    
+    public Department(Person manager){
+        this.manager = manager;
+    }
+
+    public Person getManager(){
+        return manager;
+    }
+}
+```
+
+### 移除中间人
+
+用了过多的委托函数...
+
+<b>做法:</b> 在当前类建立一个函数获取受托对象，之后Client通过获取该对象直接去操作受托对象就好了。具体过程就是把上述两段代码，进行反转。
+
+### 引入外加函数
+
+临时添加一个函数来实现一个功能，但是无法修改服务类。
+
+就可以在客户端添加一个函数来实现这个功能，把服务类实例作为他第一个参数，注意添加上注释"外加函数，应该在服务类实现"
+
+### 引入本地扩展
+
+临时添加一批函数来实现新功能，但是无法修改服务类。
+
+通过子类化或者包装来实现新功能，最后把原对象用新对象替换。
+
+## chapter8
+
+### 以对象取代数据值
+
+一个字段需要表现出某些行为，且概念不再单一时，建议抽取成对象。
+
+<b>做法：</b> 新建一个类，声明一个字段（与原类中需要代替字段类型一样的字段），之后在新类中加入这个字段的取值函数，以及以该字段为参数的构造函数。
+将原始类中的对该字段的使用替换成对该类的引用。
+
+### 将值对象改为引用对象
+
+```java
+/**
+ * @Description 未修改前 
+**/
+class Customer{
+    private final String name;
+    public Customer(String name){
+        this.name = name;
+    }
+    public String getName(){
+        return name;
+    }
+}
+
+class Order{
+    private Customer customer;
+    
+    public Order(String customerName){
+        customer = new Customer(customerName);
+    }
+    
+    public void setCustomer(String customerName){
+        customer = new Customer(customerName);   
+    }
+
+    public String getCustomerName(){
+        return customer.getName();
+    }
+    private static int numberOfOrdersFor(Collection orders,String customer){
+        int  result = 0;
+        Iterator iter = orders.iterator();
+        while(iter.hasNext()){
+            Order each = (Order)iter.next();
+            if(each.getCustormerName().equals(customer)){
+                result++;
+            }
+        }
+        return result;
+    }
+} 
+```
+
+显然一个用户一个订单，本应该一个多个订单属于同一个用户（Order 应该共享一个 Customer）
+
+```java
+/**
+ * @Description 修改后
+**/
+
+class Customer{
+    // ...省略部分代码
+    private static Dictionary instances = new Hashtable();
+
+    static void loadCustomers(){ 
+        new Customer("Lemon Car Hire").store();
+        new Customer("Associated Coffee Machines").store();
+        new Customer("Bilston Gasworks").store();
+    }
+    
+    private void store(){
+        instances.put(this.getName(),this)
+    }    
+
+    private String getName(){
+        return name;
+    }    
+
+    public static Customer getNamed(String name){
+        return (Customer) instances.get(name);
+    }
+    
+    private Customer(String name){ 
+       this.name = name;
+    }
+}
+
+class Order{
+    public Order(String customer){
+        customer = Customer.create(customer);
+    }
+}
+```
+
+### 将引用对象改为值对象
+
+- 判断是否可以能成为不可变对象。不能不可变就放弃修改
+- 建立equals和hasCode
+- 考虑删除工厂函数，构造函数声明为public
+
+```java
+class Currency{
+    private String code;
+    public String getCode(){return code;}
+    private Currency(String code){this.code = code;}
+
+    public boolean equals(Object object){
+        if (!(object instanceof Currency)) return false;
+        Currency other = (Currency) object;
+        return code.equals(other.code);
+    }
+
+    public int hashCode(){return this.code.hashCode();}
+}
+
+
+```
