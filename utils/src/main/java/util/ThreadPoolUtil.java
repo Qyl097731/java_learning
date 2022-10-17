@@ -17,7 +17,7 @@ public class ThreadPoolUtil {
 
     public static ExecutorService getExecutorService() {
         if (null == executor || executor.isShutdown() || executor.isTerminated()) {
-            ThreadFactory namedThreadFactory = (new ThreadFactoryBuilder()).setNameFormat("nsec-pool-%d").build();
+            ThreadFactory namedThreadFactory = (new ThreadFactoryBuilder()).setNameFormat("nju-pool-%d").build();
             executor = new ThreadPoolExecutor(poolsize, 200, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue(1048576), namedThreadFactory, new AbortPolicy());
         }
 
