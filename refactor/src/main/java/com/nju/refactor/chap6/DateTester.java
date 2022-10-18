@@ -1,6 +1,4 @@
-package com.nju.refactor.chapter6;
-
-import junit.framework.TestCase;
+package com.nju.refactor.chap6;
 
 import java.util.Date;
 
