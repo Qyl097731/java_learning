@@ -472,4 +472,117 @@ class Currency{
 
 <b>注意：</b>如果类型码会在子类创建后变化或者原来的宿主类已经有了子类，就放弃该重构方法，而应该使用状态或者策略模式。
 
+实际上就是改造成工厂模式
 
+### 用策略或者状态模式取代类型码
+
+针对上一种情况的问题的解决方案（类型码会在子类创建后变化或者原来的宿主类已经有了子类），
+
+### 用字段代替子类
+
+如果子类只起到常量类，没有实际行为，或者未来也不会承担实际的行为，就直接删除子类，把子类提供的常量放到超类中。
+
+修改前
+```java
+abstract class Person {
+    abstract boolean isMale();
+    abstract char getCode();
+}
+class Male extends Person{
+    @Override
+    boolean isMale() {
+        return true;
+    }
+
+    @Override
+    char getCode() {
+        return 'M';
+    }
+}
+
+class Female extends Person{
+
+    @Override
+    boolean isMale() {
+        return false;
+    }
+
+    @Override
+    char getCode() {
+        return 'F';
+    }
+}
+```
+
+修改后
+```java
+public class Person {
+    private final boolean male;
+    private final char code;
+
+    public Person(boolean male, char code) {
+        this.male = male;
+        this.code = code;
+    }
+
+    static Person creatMale(){
+        return new Person(true,'F');
+    }
+    static Person createFemale(){
+        return new Person(false,'M');
+    }
+
+    public boolean isMale() {
+        return male;
+    }
+
+    public char getCode() {
+        return code;
+    }
+}
+```
+
+做法：
+
+- 把常量函数返回的字段用final形式添加到超类
+- 对两个字段创建构造函数、赋值、获取函数
+- 把对子类的引用都改为对超类的引用
+- 删除所有的子类
+
+## 简化条件表达式
+
+### 移除控制标记
+
+用break\return 作为函数出口取代如flag来作为函数出口
+
+### 用卫语句代替嵌套循环
+
+能特判的语句就直接提前特判，尽量不要出现嵌套。
+
+### 引入NULL对象
+
+如果经常需要对对象进行非空判断，就可以考虑用该方法重构。
+
+```java
+Customer customer = getById(id);
+String name;
+if(customer == null){
+    name = "occupant"
+}else{
+    name = customer.getName();
+}
+
+```
+通过对getById方法中 `customer == null ? new NullCustomer(): customer;` 就可以把代码修改如下：
+```java
+Customer customer = getById(id);
+String name = customer.getName();
+```
+
+Null Object模式称为特例模式，通过特例模式可以降低错误处理的开销，如Java浮点数的正无穷大和负无穷大的使用，简化了浮点运算的异常处理。
+
+### 引入断言
+
+在永真的条件上进行断言，如果不为真也能正常运行就没必要添加。
+
+## 简化函数调用
