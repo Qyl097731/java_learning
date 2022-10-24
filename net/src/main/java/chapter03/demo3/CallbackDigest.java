@@ -26,7 +26,7 @@ public class CallbackDigest implements Runnable{
             while(din.read() != -1);
             din.close();
             byte[] digest = sha.digest();
-            ReturnDigestUserInterface.printResult(filename,digest);
+            ReturnDigest.printResult(filename,digest);
         } catch (IOException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }

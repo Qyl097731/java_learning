@@ -164,4 +164,64 @@ wait(),等待一个对象，直到
 
 线程启动和撤销都会有性能开销；线程间切换也会有开销；生成过多的线程，超过机器所能承载的极限时，只会导致更多的线程管理的开销。
 
+## Internet地址
+
+### 简述
+
+- IPV4
+
+四字节三十二位，每个无符号字节范围0-255，字节间通过.分割
+
+- IPV6
+
+16字节128位，通过:分隔成8个块，每个区块都是4个16进制数字。可以省略前导0，最早出现的多个连续0区块可以用::表示。
+有时候最后四个字节表示成IPV4格式。
+
+- DNS
+
+域名解析器。如果一个域名对应多个IP，可以通过DNS随机选择一个主机进行响应。如果该服务移动到其他机器时，会重新做域名与IP之间的映射
+
+### InetAddress
+
+Java对Ip的封装,当IP相同时，两个InetAddress对象就相同，否则就是不相同。
+
+### 缓存
+
+暂存最近请求的域名和IP映射。由于第一次查找超时（其实存在该域名到IP的映射），可是由于缓存机制的原因，会把第一次超时返回的域名到IP的映射存的时间较短，可以通过
+
+- `newworkaddress.cache.ttl` 指定成功的查找结果的缓存时间
+- `newworkaddress.cache.negative.ttl` 指定不成功的查找结果的缓存时间
+- -1 表示永久缓存
+
+### 安全性
+
+对不可信的applet不提供DNS查找服务。可以通过`public void checkConnect(String hostname,int port)`测试主机能否解析.
+
+### 地址类型
+
+- 127.0.0.1 \ ::1 本机地址 可以通过`isLoopbackAddress()`测试
+- 224.0.0.0 - 239.255.255.255 \ FF 组播地址，可以通过`isMulticastAddress()`测试
+- FF0E\FF1E开头的IPV6地址 全球组播地址
+- FF08\FF18开头的IPV6地址 组织范围组播地址
+- FF05\FF15开头的IPV6地址 网站组播地址
+- FF02\FF12开头的IPV6地址 子网范围组播地址
+- FF01\FF11开头的IPV6地址 本地接口组播地址
+- 0.0.0.0 \  :: 通配地址 可以通过`isAnyLocalAddress()`测试
+- FE80:0000.0000:0000开头的IPV6地址 本地链接地址（对比DHCP服务的IP自动分配） 可以通过`isLinkLocalAddress()`测试
+- EFC0:0000.0000:0000开头的IPV6地址 本地哇那个站地址，可以通过`isSiteLocalAddress()`测试
+
+### 测试可达性
+
+`isReachable()`测试是否连接到某特定主机
+
+### NetworkInterface
+
+表示本地IP地址，可以是一个物理接口，也可以是一个虚拟接口。可以通过这个类来枚举所有本地方法，之后通过这些地址创建InetAddress。
+
+1. `getByName(String name)`获取指定名字的网络接口
+2. `getByInetAddress(InetAddress address)` 获取指定IP地址绑定的网络接口
+3. `getNetWorkInterfaces()` 获取所有的本机的网络接口
+4. `getInetAddresses()` 一个接口可能对应多个IP，列举某接口的所有IP
+5. `getName()` 返回某个接口的名字
+6. `getDisplayName()` 返回一个更友好的接口名字
 
