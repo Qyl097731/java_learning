@@ -1,5 +1,6 @@
 package chapter03.demo3;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -35,5 +36,12 @@ public class ReturnDigest  extends Thread {
 
     public byte[] getDigest(){
         return digest;
+    }
+
+    public static void printResult(String filename,byte[] digest){
+        StringBuilder res = new StringBuilder(filename);
+        res.append(":   ");
+        res.append(DatatypeConverter.printHexBinary(digest));
+        System.out.println(res);
     }
 }

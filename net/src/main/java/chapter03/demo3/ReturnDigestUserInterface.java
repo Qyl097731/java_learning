@@ -2,6 +2,8 @@ package chapter03.demo3;
 
 import javax.xml.bind.DatatypeConverter;
 
+import static chapter03.demo3.ReturnDigest.printResult;
+
 /**
  * @description 展示多线程中不同的解决方案
  * @date:2022/10/21 22:29
@@ -48,12 +50,4 @@ public class ReturnDigestUserInterface {
             printResult(filename,dr.getDigest());
         }
     }
-
-    static void printResult(String filename,byte[] digest){
-        StringBuilder res = new StringBuilder(filename);
-        res.append(":   ");
-        res.append(DatatypeConverter.printHexBinary(digest));
-        System.out.println(res);
-    }
-
 }
