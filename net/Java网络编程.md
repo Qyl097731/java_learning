@@ -225,9 +225,9 @@ Java对Ip的封装,当IP相同时，两个InetAddress对象就相同，否则就
 5. `getName()` 返回某个接口的名字
 6. `getDisplayName()` 返回一个更友好的接口名字
 
-## URL & URI
+# URL & URI
 
-### URI
+## URI
 
 统一资源标识符,由一个模式和一个模式特定组成部分组成，模式和模式组成部分用一个冒号分隔。模式：模式特定部分
 
@@ -241,7 +241,7 @@ URI大多采用层次结构：如http://www.ietf.org/rfc/rfc3986.txt
 
 > 如果没有把ASCII字符编码为十六进制码，直接包含在URI中，称为IRI（国际化资源标识符），更容易读入、更容易录入。
 
-### URLs
+## URLs
 
 是最常见的URI，既能表示资源，又能为资源提供一个特定的网络位置，客户端可以通过它来获取资源。
 
@@ -257,66 +257,66 @@ URL语法为：protocol://userInfo@host:port/path?query#fragment，如http://www
 
 包含片段标识符的URL引用，不是URL。
 
-### 相对URL
+## 相对URL
 
 - `<a href="javafaq.html">` 当前文件夹的javafaq.html
 - `<a href="/projects/ipv6/">` 文档根目录的/projects/ipv6/
 
-### URL类
+## URL类
 
 `java.net.URL`是对统一资源定位符的抽象，使用了策略设计模式。这个类只会对URL协议进行识别，其他参数不做检查。
 
-#### 由字符串构造URL
+### 由字符串构造URL
 
-##### 案例
+#### 案例
 
 - 测试URL类对协议的支持情况 （ProtocolTester）
 
-#### 由组成部分构造URL
+### 由组成部分构造URL
 
 `public URL(String protocol, String hostname, String file) throws MalformedURLException`
 `public URL(String protocol, String hostname, int port, String file) throws MalformedURLException`  
 
 端口不指定的时候，端口为协议的默认端口。file参数应该/开头，包括路径、文件名、可选的片段标识符。
 
-#### 构造相对URL
+### 构造相对URL
 
 `public URL(URL base, String relative) throws MalformedURLException` 通过相对URL和基础URL构建一个绝对URL
 
 实际就是把base的文件名替换成relative参数值
 
-### 从URL获取数据
+## 从URL获取数据
 
-#### openStream
+### openStream
 
-##### 案例 
+#### 案例 
 
 - 下载一个Web页面 （SourceViewer）
 
-#### openConnection
+### openConnection
 
 `public URLConnection openConnection() throws java.io.IOException` 为指定的URL打开一个socket，并返回一个URLConnection。URLConnection
 白哦是一个网络资源的打开的连接。之后会详细介绍。
 `public URLConnection openConnection(Proxy proxy) throws java.io.IOException` 指定通过特定代理服务器传递连接
 
-#### getContent
+### getContent
 
 `public final Object getContent() throws java.io.IOException ` 获取URL内容
 `public final Object getContent(Class[] classes) throws java.io.IOException` 以Class类型返回URL内容
 
-##### 案例
+#### 案例
 
 - 下载一个对象 (ContentGetter)
 
-### URL组成部分
+## URL组成部分
 
 包含了协议、主机、端口号、口令、用户等等信息。
 
-#### 案例
+### 案例
 
 - URL组成部分
 
-### 相等性和比较
+## 相等性和比较
 
 `equals()` 和 `hashCode()`
 
@@ -324,7 +324,7 @@ URL语法为：protocol://userInfo@host:port/path?query#fragment，如http://www
 
 > equals() 可能是一个阻塞的IO操作，避免将URL存储在需要用到equals的数据结构中，如HashMap.
 
-#### 案例
+### 案例
 
 - 比较两个资源是否相等
 
@@ -368,11 +368,11 @@ URL语法为：protocol://userInfo@host:port/path?query#fragment，如http://www
 - 模式和授权机构的对比不考虑大小写
 - 不解码直接比较
 
-### URLEncoder
+## URLEncoder
 
 对字符串完成URL编码，可能会过度编码，但是Web浏览器会合理处理这些过度编码的URL；推荐使用UTf-8，兼容性较好。
 
-#### 案例 
+### 案例 
 
 - x-www-for-urlencoded 字符串（URISplitter）
 
@@ -381,15 +381,15 @@ URL语法为：protocol://userInfo@host:port/path?query#fragment，如http://www
 
 - QueryString类
 
-### URLDecoder
+## URLDecoder
 
 URLDecoder包含一个静态的decode(),他会对用x-www-form-url-encode格式编码的字符串进行解码。
 
-### 代理
+## 代理
 
 动静分离、请求的过滤都可以通过中间代理进行实现。
 
-### 系统属性
+## 系统属性
 
 - 设置代理，并排除不需要代理的主机名
 ```java
@@ -401,7 +401,7 @@ URLDecoder包含一个静态的decode(),他会对用x-www-form-url-encode格式�
     System.setProperty("http.nonProxyHost","*.oreilly.com");
 ```
 
-### Proxy类
+## Proxy类
 
 Proxy类允许从Java程序中对代理服务器进行更细粒度的控制。
 
@@ -409,43 +409,43 @@ Proxy类允许从Java程序中对代理服务器进行更细粒度的控制。
 - Proxy.Type.HTTP
 - Proxy.Type.SOCKS
 
-### ProxySelector
+## ProxySelector
 
 选择不同的代理服务器，尝试建立连接。
 
-#### 案例 
+### 案例 
 
 - ProxySelector会基础可以连接的URL(LocalProxySelector)
 
-### 通过Get与服务器端程序通信
+## 通过Get与服务器端程序通信
 
 通过URL发送Get请求
 
-#### 案例
+### 案例
 
 - 完成一个OpenDirectory搜索(DMoz)
 
-### 访问口令保护的网站
+## 访问口令保护的网站
 
-#### Authenticator
+### Authenticator
 
 是一个抽象类，通过`Authenticator.setDefault()`来注入需要的具体认证方式。用来为HTTP认证自我保护的网站提供用户名和口令。其中Http的认证模式一般都是`basic`。
 
 其子类必须覆盖`getPasswordAuthentication()`方法来收集用户名和口令，缓存在虚拟机会话中，一旦有了正确的口令就不再询问。
 
-### PasswordAuthentication
+## PasswordAuthentication
 
 仅包含用户名和口令的final类。
 
-### JPasswordField
+## JPasswordField
 
 输入密码的时候显示的是*。
 
-#### 案例 GUI认证程序(SecureSourceViewer、DialogAuthenticator)
+### 案例 GUI认证程序(SecureSourceViewer、DialogAuthenticator)
 
-## HTTP
+# HTTP
 
-### HTTP协议
+## HTTP协议
 
 Web浏览器和Web服务器之间通信的标准协议。对于每一个请求都有4个步骤：
 
@@ -461,7 +461,7 @@ Web浏览器和Web服务器之间通信的标准协议。对于每一个请求�
 - 一个空行
 - 一个消息体
 
-#### MIME类型
+### MIME类型
    
 类型和子类型，其中8个顶级类型
 
@@ -474,7 +474,7 @@ Web浏览器和Web服务器之间通信的标准协议。对于每一个请求�
 - message/* 表示协议特定的信封，如email消息和HTTP响应
 - multipart/* 表示多个文档和资源的容器
 
-#### 一般的客户端请求
+### 一般的客户端请求
 
 <img src="./images/1666699247173.jpg" />
 
@@ -483,17 +483,17 @@ Web浏览器和Web服务器之间通信的标准协议。对于每一个请求�
 - Connection: Keep-Alive // 连接保持,使得可以宠用Socket
 - Accept: ....    // 告诉服务器客户端可以处理哪些数据类型
 
-#### 一般的服务器响应
+### 一般的服务器响应
 
 首行应该是响应的状态200、404、500等，其余部分参考下图：
 <img src="./images/1666699908078.jpg" />
 
-#### Keep-Alive
+### Keep-Alive
 
 - HTTP1.0会为每个请求开一个新连接，但是打开和关闭连接的花费远超过数据传输时间。
 - HTTP1.1及以后版本，可以保持连接打开，连接保持期间发送多次请求。
 
-### HTTP方法
+## HTTP方法
 
 - GET（查）
 - POSt（增） <b>不存在幂等性</b>，存在重复提交问题
@@ -501,12 +501,12 @@ Web浏览器和Web服务器之间通信的标准协议。对于每一个请求�
 - PUT（改） 幂等性，就是说不会同一个请求连续发送两次，不用担心处理两次，用过了就不能再用了。
 - HEAD 只查看资源的首部，不会返回具体数据，常用来检查文件的修改日期，或者与本地副本文件做对比，检查有效性。
 
-### Cookie
+## Cookie
 
 - 在请求和响应的HTTP首部，是一些用来存储持久的客户端状态的非空白的小文本，不能包含逗号或者分号。
 - 服务器通过cookie来指示会话ID、登录凭据、用户首选项等，当然服务器只能对自己所属的域进行Cookie的设置。
 
-#### 属性
+### 属性
 
 - Domain：扩大Cookie生效的范围。
 - Path：改变Cookie作用的目录范围。
@@ -517,13 +517,236 @@ Web浏览器和Web服务器之间通信的标准协议。对于每一个请求�
  
 `Cookie: usere=elharo; Path=/restricted; Domain=.example/com` 跟Spring Gateway中的过滤很相像。
 
-#### CookieManager
+### CookieManager
 
-##### 案例
+#### 案例
 
 - 过滤指定域的Cookie （NoGovernmentCookies）
 
-#### CookieStore
+### CookieStore
 
 CookieManager保存在CookieStore中，把cookie库保存在磁盘上。
+
+# URLConnection
+
+URLConnection是一个抽象类，表示指向URL指定资源的活动连接。是Java的协议处理器机制的一部分，将协议处理与数据处理分开。
+
+> 与HTTP绑定过于紧密。如假定传输的每个文件前都有MIME或者类似的东西，但是如FTP、SMTP不使用MIME首部。
+
+## 打开URLConnection
+
+一般过程
+
+- 构造URL对象
+- 调用URL对象的openConnection()获取一个URLConnection
+- 配置URLConnection
+- 读写数据
+- 关闭
+
+子类一般只要重写URLConnection的`connect()`方法，第一次构造URLConnection时，需要手动connect来建立本机和远程主机之间的连接（一般使用TCP socket
+）；但是大多数操作如果发现连接还没建立，会自动去调用connect。
+
+## 读取服务器数据
+
+### 案例 
+
+- 用URLConnection下载一个Web页面 (SourceViewer2)
+
+## 读取首部
+
+### 获取指定的首部字段
+
+常见首部字段
+
+- Content-type
+- Content-length
+- Content-encoding
+- Date
+- Last-modified
+- Expires
+
+#### getContentType
+
+获取响应体的MIME内容类型，可能包含字符集编码方式。如果没指定编码，就使用IOS-8859-1（HTTP的默认编码模式）
+
+##### 案例
+
+- 用正确的字符接下载一个Web页面 (EncodingAwareSourceViewer)
+
+#### getContentLength
+
+获取响应的资源内容有多少字节
+
+##### 案例
+
+- 从Web网站下载二进制文件并保存到磁盘 (BinarySaver)
+
+#### getContentEncoding
+
+获取内容的编码方式。如果要对发送的文件进行压缩，那么就是x-gzip编码方式。
+
+> ContentEncoding 是对资源的编码，如压缩x-gzip；ContentType 是对具体内容的编码 如text/* 就是文本直接显示
+
+#### getLastModified
+
+获取文档最后修改时间。
+
+##### 案例
+
+- 返回首部 (HeaderViewer)
+
+### 获取任意的首部字段
+
+#### getHeaderField(String name)
+
+获取指定的字段，同意以String类型返回
+
+#### getHeaderField(int n)
+
+获取第n个首部字段的值
+
+##### 案例
+
+- 显示整个HTTP首部(AllHeaders)
+
+## 缓存
+
+对经常访问的资源进行缓存。一般GET通过HTTP访问的都可以缓存；HTTPS活POST就不应该缓存。
+
+### 案例
+
+- 检查Cache-control首部
+
+## Java的Web缓存
+
+Java默认不缓存。若想缓存，需要有：
+
+- ResponseCache的子类
+- CacheRequest的子类
+- CacheResponse的子类
+
+`ResponseCache.setDefault()`来注入ResponseCache的子类完成系统缓存。Java虚拟机仅支持一个共享缓存。
+
+### 案例
+
+- CacheRequest具体子类(SimpleCacheRequest、MemoryCache)
+
+## 配置连接
+
+URLConnection的7个保护的实例字段
+
+- url
+    
+    指定了URLConnection所连接的url，复制之后不能再变
+
+- doInput
+
+    URLConnection可以用来读取服务器
+
+- doOutPut
+
+    URLConnection可以想服务器发消息
+
+- allowUserInteraction
+
+    是否允许用户交互
+    
+- useCaches
+
+    是否允许缓存
+    
+- ifModifiedSince
+
+    指定了文件最后修改时间，如果在该时间之后服务器文件有所改动，就服务器传回新文件；否则读缓存文件。
+    
+    - 案例 将ifModifiedSince设置为24小时之前（Last24）
+
+- connected
+
+    连接是否已经打开
+
+## 配置客户端请求HTTP首部
+
+`setRequestPorperty(String name, String value)`给URLConnection首部字段设置新值。
+`addRequestPorperty(String name, String value)`给URLConnection首部字段增加新值。
+
+```java
+uc.setRequsstProperty("Cookie","username=test; password=test; session=100678945")
+```
+
+## 向服务器写入数据
+
+默认禁止写入数据，需要`uc.setDoOutput(true)`来开启。
+
+### 案例 
+
+- 提交一个表单 （FormPoster）
+
+上述案例：首先建立URL的连接，之后封装好要传递的数据，接着通过打开服务器的写功能，最后建立连接，写出请求数据。
+
+## URLConnection安全考虑
+
+通过URLConnection的`getPermission()`查看连接这个URL所需要的权限。
+
+## HttpURLConnection
+
+URCConnection的子类。可以获得和设置请求方法、确定是否重定向、获得响应码和消息，以及确定是否使用了代理服务器。由于构造方法是protected，所以不能直接创建该对象实例，需要强制转换。
+
+```java
+    URL u = new URL("http://lesswrong.com/");
+    HttpsURLConnection http = (HttpsURLConnection)u.openConnection();
+```
+
+### 请求方法
+
+大多数方法之前讲过了，所以不再赘述。
+
+`public void setRequestMethod(String method) throws ProtocolException` 设置请求方法
+
+#### HEAD
+
+与GET相似，但是告诉服务器只返回HTTP首部，不用实际发送文件。常用来检查文件在最后一次缓存之后是否有修改。
+
+##### 案例
+
+- 获得URL的最后一个修改的时间 (LastModified)
+
+#### OPTION
+
+询问指定的URL支持哪些选项，如果请求的URL是*，那么这个请求会作用于整个服务器而不是服务器上的某个URL。
+
+最后服务器在HTTP首部的Allow字段返回该URL允许的请求方法集合。
+
+#### TRACE
+
+追踪服务器和客户端之间进行了哪些处理，如果经过了代理服务器的话，原请求返回前后会有变化。
+
+### 处理服务器响应
+
+#### 案例
+
+- 查看响应码和消息(SourceViewer3)
+
+### 错误条件
+
+#### 案例
+
+- 用URLConnection下载Web页面
+
+### 重定向
+
+3XX的响应码都表示重定向，表示请求的资源不再期望的位置上，可能在其他位置上。此时会自动跳转到新位置加载文档，这存在重大的安全隐患，可能会从一个可信网站到一个不可信网站。
+
+### 流模式
+
+> 每个HTTP请求首部，都有一个Content-length，但是写首部的时候可能还不知道主体的长度，而这个长度对于读取流数据时有关键。
+> Java的处理方式：对于HttpURLConnection获取第额OutputStream，会把所有的内容缓存写入OutputStream.
+
+- 当然为了提高性能，可以使用块传输模式 `setChunkedStreamingMode`,不过会影响身份认证和重定向。
+- 如果已经知道数据大小，可以通过`setFixedLengthStreamingMode`进行优化连接，不过会影响身份认证和重定向。
+
+
+
+
+
 
