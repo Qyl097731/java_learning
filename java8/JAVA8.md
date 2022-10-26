@@ -346,3 +346,272 @@ Apple a2 = c2.apply("green" ,110);
     Function<Integer, Integer> h = f.compose(g);
     int result = h.apply(1);  
 ```
+
+## 引入流
+
+先看Java8前后的代码对比：筛选元素，对菜肴排序，处理排序后的菜名列表
+```java
+    @Data
+    class Dish {
+        int calories;
+        String name;
+    }
+```
+Java7 
+```java
+   List<Dish> lowCaloricDishes = new ArrayList<>();
+   for (Dish d : menu) {
+       if (d.getCalories() < 400) {
+           lowCaloricDishes.add(d);
+       }
+   }
+   Collections.sort(lowCaloricDishes, new Comparator<Dish>() {
+       @Override
+       public int compare(Dish d1, Dish d2) {
+           return Integer.compare(d1.getCalories(), d2.getCalories());
+       }
+   });
+   List<String> lowCaloricDishesName = new ArrayList<>();
+   for (Dish d : lowCaloricDishes) {
+       lowCaloricDishesName.add(d.getName());
+   }
+```
+Java8
+```java
+    List<String> lowCaloricDishesName =
+            menu.stream()
+                    .filter(d -> d.getCalories() < 400)
+                    .sorted(comparing(Dish::getCalories))
+                    .map(Dish::getName)
+                    .collect(toList());
+```
+显然Java8版本的更简介，且Stream API 可能已经隐式地用多线程在处理这一整串业务了。
+
+<b>注意:</b>Java8中的代码块，如果最后不进行collect收集，其实不会之前的所有操作，可以看作collect是前面操作的开始信号。
+
+> <b>其他库Guava、Apache
+>   Guava是谷歌创建的一个很流行的库。它提供了multimaps和multisets等额外的容器类。Apache Commons Collections库也提供了类似的功能
+
+### 流与集合
+
+如下所示：
+
+<img src="./images/1666788209066.png" />
+
+集合中的数据必须是经过计算之后的值，展示出急切计算的特带你；流中的数据不一定要是经过了计算的，展示出延迟计算的特点。
+
+<b>其中每个流只能被消费一次。</b>
+
+#### 内部迭代与外部迭代
+
+```java
+    // 外部迭代
+    List<String> names = new ArrayList<>(); 
+    for(Dish d: menu){ 
+        names.add(d.getName()); 
+    }
+
+    // 内部迭代
+    List<String> names = menu.stream() 
+                             .map(Dish::getName)
+                             .collect(toList());
+```
+背后原理都是通过迭代器进行迭代
+
+## 使用流
+
+<b>建议大家查一下文档，这里只展示部分操作</b>
+
+### 筛选和切片
+
+```java
+    // 筛选各异的偶数，并打印
+    List<Integer> numbers = Arrays.asList(1, 2, 1, 3, 3, 2, 4); 
+    numbers.stream() 
+         .filter(i -> i % 2 == 0) 
+         .distinct() 
+         .forEach(System.out::println);
+```
+
+其工作图不难看出Stream对数据隐式并行的处理：
+<img src="./images/1666789868451.jpg"/>
+
+
+```java
+    //  skik跳过前n个元素
+    List<Dish> dishes = menu.stream() 
+                         .filter(d -> d.getCalories() > 300) 
+                         .skip(2) 
+                         .collect(toList()); 
+
+
+    // 收集所有菜名长度
+    List<Integer> dishNameLengths = menu.stream() 
+                                     .map(Dish::getName) 
+                                     .map(String::length) 
+                                     .collect(toList()); 
+
+    // 流的扁平化 flatMap 降维压缩成一维的完整的流 ❤
+    List<String> uniqueCharacters = words.stream() 
+                                        .map(w -> w.split("")) 
+                                        .flatMap(Arrays::stream) 
+                                        .distinct() 
+                                        .collect(Collectors.toList()); 
+    
+    // flatMap 返回总和能被3整除的数对
+       List<Integer> numbers1 = Arrays.asList(1, 2, 3); 
+       List<Integer> numbers2 = Arrays.asList(3, 4); 
+       List<int[]> pairs = 
+                numbers1.stream() 
+                    .flatMap(i -> numbers2.stream()
+                                    .filter(j -> (i + j) % 3 == 0) 
+                                    .map(j -> new int[]{i, j}) 
+                            ) 
+                    .collect(toList()); 
+            
+    // findFirst 在有序的流中查出第一个满足条件的元素
+    List<Integer> someNumbers = Arrays.asList(1, 2, 3, 4, 5); 
+    Optional<Integer> firstSquareDivisibleByThree = 
+         someNumbers.stream() 
+         .map(x -> x * x) 
+         .filter(x -> x % 3 == 0) 
+         .findFirst(); // 9
+
+    // findAny 找出任意一个满足条件的元素 
+       Optional<Dish> dish = 
+            menu.stream() 
+            .filter(Dish::isVegetarian) 
+            .findAny(); 
+```
+> findAny & findFirst 区别在于并行程度，显然关注顺序的findFirst对并行的利用要差于findAny
+
+flatMap方法让你把一个流中的每个值都换成另一个流，然后把所有的流连接起来成为一个流。
+flagMap的工作模式图：
+<img src="./images/1666791177623.jpg"/>
+
+### 规约
+
+```java
+    // 使用reduce前
+    int sum = 0;
+    for (int x : numbers) {
+        sum += x;
+    }
+
+    // 使用reduce后
+    int sum = numbers.stream().reduce(0, (a, b) -> a + b);
+    
+```
+上述代码的reduce的工作过程：
+<img src="./images/1666792945900.jpg" />
+
+> map和reduce的连接通常成为map-reduce模式，Google用它来进行网络搜索而出名。
+
+> 流操作：无状态和有状态
+>   
+> filter、map：无状态，从输入流中获取元素，并输出0或1个结果
+> 
+> reduce、sum、max : 有状态，都是需要通过内部状态来积累结果
+>
+> sort、distinct： 有状态，需要知道前面缓冲区的元素才能进行把当前元素排序、是否要删除当前的元素
+
+### 练习题 
+
+参见 java8.chapter05.demo01.Practice
+
+### 数值流
+
+```java
+    // 会装箱拆箱
+    int calories = menu.stream() 
+                     .map(Dish::getCalories) 
+                     .reduce(0, Integer::sum); 
+
+    // 映射到数值流 避免拆箱装箱
+    int calories = menu.stream() 
+                    .mapToInt(Dish::getCalories) 
+                    .sum(); 
+
+    // 转换成对象流
+    // 1. boxed
+    IntStream intStream = menu.stream().mapToInt(Dish::getCalories); 
+    Stream<Integer> stream = intStream.boxed();
+
+    // 2. mapToObj
+    int a = 1;
+    IntStream.rangeClosed(1, 100)
+            .filter(b -> Math.sqrt(a * a + b * b) % 1 == 0)
+            .mapToObj(b-> new int[]{a,b,(int)Math.sqrt(a*a+b*b)});
+
+
+    // 默认流OptionalInt 防止数值流因为流为空而统计出错误结果
+    OptionalInt maxCalories = menu.stream()     
+                                .mapToInt(Dish::getCalories) 
+                                .max();
+    // 如果没有最大值的话，显式提供一个默认最大值
+    int max = maxCalories.orElse(1);
+
+    // 数值范围
+    // 表示范围 [1, 100]
+    IntStream evenNumbers = IntStream.rangeClosed(1, 100) 
+                                                .filter(n -> n % 2 == 0); 
+```
+
+### 构建流
+
+#### 由值创建流
+`Stream<String> stream = Stream.of("Java 8 ", "Lambdas ", "In ", "Action");`
+ 
+#### 由文件生成流
+
+统计文件中有多少个不同的单词，其中`Files.lines`，它会返回一个由指定文件中的各行构成的字符串流。
+```java
+    long uniqueWords = 0;
+    try(Stream<String> lines =
+                Files.lines(Paths.get("data.txt"), Charset.defaultCharset())){
+        uniqueWords = lines.flatMap(line -> Arrays.stream(line.split(" ")))
+                .distinct()
+                .count();
+    }catch(IOException e){
+    }
+```
+
+#### 由函数生成流：创建无限流
+
+##### 迭代 iterate
+
+```java
+    // 1. 斐波那契元组，映射成斐波那契数
+    Stream.iterate(new int[]{0, 1},
+            t -> new int[]{t[1],t[0] + t[1]})
+            .limit(10)
+            .map(t -> t[0])
+            .forEach(System.out::println);
+```
+
+##### 生成 generate
+
+`IntStream ones = IntStream.generate(() -> 1);` 生成全是1的流
+
+```java
+    // 2. 打印斐波那契数列 通过实现IntSupplier来实现有状态的lambda
+    IntSupplier fib = new IntSupplier(){
+        private int previous = 0;
+        private int current = 1;
+        public int getAsInt(){
+            int oldPrevious = this.previous;
+            int nextValue = this.previous + this.current;
+            this.previous = this.current;
+            this.current = nextValue;
+            return oldPrevious;
+        }
+    };
+    IntStream.generate(fib).limit(10).forEach(System.out::println);
+```
+
+## 用流收集数据
+
+
+
+
+

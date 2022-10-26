@@ -108,6 +108,8 @@ public class AppleFilterTest {
         return result;
     }
 
+    List<Apple> inventory = new ArrayList<>();
+
     /**
      * 实现四
      */
