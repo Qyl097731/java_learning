@@ -745,6 +745,116 @@ URCConnection的子类。可以获得和设置请求方法、确定是否重定�
 - 当然为了提高性能，可以使用块传输模式 `setChunkedStreamingMode`,不过会影响身份认证和重定向。
 - 如果已经知道数据大小，可以通过`setFixedLengthStreamingMode`进行优化连接，不过会影响身份认证和重定向。
 
+## 客户端Socket
+
+### 用Socket从服务器读取数据
+
+#### 案例
+
+- Daytime协议客户端 （DaytimeClient）
+
+### 用Socket写入服务器
+
+#### 案例
+
+- 一个基于网络的英语-拉丁语翻译程序（DictClient）
+
+### 半关闭Socket
+
+计算机网络中四次挥手的理论。
+
+`public void shutdownInput() throws IOException`
+`public void shutdownOutput() throws IOException`
+
+> 这里的关闭只是关闭了传输数据的流，不会释放Socket关联的资源，如所占用的端口，需要手动关闭Socket。
+
+### 构造和连接Socket
+
+`Socket`类是Java完成客户端TCP操作的基础类。通过IP和端口与应用建立连接。
+
+#### 案例
+
+- 查看指定主机前1024个端口哪些安装由TCP服务器 (LowPortScanner)
+
+### 获取Socket信息
+
+- 远程地址
+- 远程端口
+- 本地地址
+- 本地端口
+
+远程端口通常是标准委员会预先分配的已知端口，而本地端口通常是从本机运行时的空闲端口中选出的，因此本地多个客户端就可以同时访问相同的服务。
+
+`isConnected()`返回是否Socket曾经连接过远程主机；
+
+`isClosed()`返回的是否已经关机连接
+
+`isConnected() && !isClosed()` 返回Socket是否打开
+
+#### 案例
+
+- 获得Socket信息(SocketInfo)
+
+## 设置Socket选项
+
+- TCP_NODELAY 
+   - Nagle算法：小数据包组合成大大数据包一起发送。需要远程主机对前一个包的确认才能继续发送数据包。存在这重大的延时问题。
+   - TCP_NODELAY设置为true可以打破缓冲。
+   - `setTcpNoDelay(boolean on)`
+   
+- SO_LINGER
+   - 指定Socket关闭之后如何处理尚未完成发送的数据报。在响应的描述内如果没有成功发送数据、收到服务器确认，才解除对close()的阻塞。
+   - `setSoLinger(boolean on, int seconds)` 
+   
+- SO_TIMEOUT
+   - 来保证read()的阻塞不会超过设定的毫秒数（正常i情况，read()会阻塞尽可能长的时间来读取更多的数据）
+   - `setSoTimeout(int milliseconds)`
+ 
+- SO_RCVBUF和SO_SNDBUF
+   - TCP连接中，大数据块受益于大缓冲区，小数据量受益于小缓冲区。
+   - 通过设置缓冲区的大小来提高带宽（缓冲区\延迟），如果收发数据速度调整后过高，超过了网络的最大带宽，致使网路来不及处理，可能会导致拥塞、丢包和性能下降。
+   - <b> 一般使用OS推荐的就好，不推荐自己手动调整</b>
+
+- SO_KEEPALIVE
+   - 客户端偶尔会通过一个空心啊链接发送一个数据包，来测试连通性。如果12分钟的尝试都没收到响应，就关闭连接。
+   - `setKeepAlive(boolean on)`
+   
+- OOBINLINE
+   - 发送紧急数据，优先处理紧急数据。Java通过该设置可以不忽略紧急数据。
+   - `setOOBINline(boolean on)` 
+   
+- SO_REUSEADDR
+   - Socket 关闭时，数据包可能还在网络上传输，需要等待确认对方已经收到这些数据包的响应，如果恰好由新进程占用了该端口，就会导致错误，致使响应数据返回到了新的连接。
+   - 建议关闭，否则就会出现上述错误。
+   
+- IP_TOS服务类型
+   - 不同类型的服务有不同的性能需求。服务器类型存放在IP首部名为IP_TOS的8位字段中。
+        
+     IP_TOS ： DSCP(高六位，指定服务类型) + ECN（低两位，显示拥塞通知）
+   - `setTrafficClass(int trafficClass)`    
+   
+## Socket异常
+
+`public class BindException extends SocketException` 端口正在使用或者无权访问
+
+`public class ConnectException extends SocketException` 主机忙或者没有进程在监听该端口
+
+`public class NoRouteToHostException extends SocketException` 连接超时
+
+## GUI中的Socket
+
+### whois
+
+- 客户端连接远程服务器端口43的TCP
+- 输入查询对象
+- 服务器做出响应，关闭连接
+- 客户端向用户展示信息
+
+`telnet whois.internic.net 43` 不同服务器可能会返回不同格式数据
+
+#### 案例
+
+- 图形化Whois界面(WhoisGUI)
 
 
 
