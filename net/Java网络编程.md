@@ -856,6 +856,28 @@ URCConnection的子类。可以获得和设置请求方法、确定是否重定�
 
 - 图形化Whois界面(WhoisGUI)
 
+## 服务器Socket
+
+服务器的生命周期：
+
+`ServerSocket`
+
+- 使用特定端口创建一个新的ServerSocket.
+- ServerSocket利用`accept()`监听客户端请求。`accept()`一致阻塞，直到监听到请求后返回一个连接客户端和服务器之间的Socket对象
+- 根据服务器类型，调用Socket的输入流\输出流来进行通信
+- 服务器与客户端根据协商的协议交互，直到关闭连接
+- 关闭连接后，继续回到`accept()`进行监听。
+
+### 案例
+
+- daytime服务器案例(DaytimeServer)
+
+### 多线程服务器
+
+#### 案例
+
+- 线程池的daytime服务器
+
 
 
 
