@@ -167,7 +167,8 @@ Java8行为参数化：去掉了Java8以前承载行为传递的对象，直接�
 有了函数式接口，就可以利用Lambda表达式（函数式接口的一种具体实现的实例），来代替匿名函数传递方法。
 
 #### 内置的函数式接口 ❤
-
+<img src="./images/1666882871715.jpg" />
+<img src="./images/1666882911967.jpg" />
 ##### Predicate
 
 通过test方法来检查传入对象是否符合条件。
@@ -611,7 +612,130 @@ flagMap的工作模式图：
 
 ## 用流收集数据
 
+熟悉`Collectors`使用
+
+### 归约和汇总
+
+规约的并行操作过程：
+<img src="./images/1666883369912.jpg" />
+
+#### 查找流中的最大值和最小值
+```java
+    Comparator<Dish> dishCaloriesComparator =
+            Comparator.comparingInt(Dish::getCalories);
+    // Optional<Dish> 防止menu是null
+    Optional<Dish> mostCalorieDish =
+            menu.stream()
+                    .collect(maxBy(dishCaloriesComparator));
+```
+
+#### 汇总
+```java
+    // summingInt 对菜的卡路里求和
+    int totalCalories = menu.stream().collect(summingInt(Dish::getCalories));
+
+    //  summarizingInt 获取所有的汇总数据 
+    IntSummaryStatistics menuStatistics = 
+        menu.stream().collect(summarizingInt(Dish::getCalories)); 
+```
+对菜的卡路里求和的工作过程：
+<img src="./images/1666877130200.jpg" />
+
+#### 连接字符串
+```java
+    // joining 所有字符串连成一个字符串 用逗号分割
+    String shortMenu = menu.stream().map(Dish::getName).collect(joining(","));
+```
+
+#### 广义的规约汇总
+通过`Collectors.reducing`进行一般化的规约
+```java
+    // 对菜的卡路里求和
+    int totalCalories = menu.stream().collect(reducing( 
+                                     0, Dish::getCalories, (i, j) -> i + j)); 
+```
+
+### 分组
+`Collectors.groupingBy`
+```java
+    // 按照热量分组 高热量、正常、低热量
+    public enum CaloricLevel { DIET, NORMAL, FAT }
+    Map<CaloricLevel, List<Dish>> dishesByCaloricLevel = menu.stream().collect(
+            groupingBy(dish -> {
+                if (dish.getCalories() <= 400) return CaloricLevel.DIET;
+                else if (dish.getCalories() <= 700) return
+                        CaloricLevel.NORMAL;
+                else return CaloricLevel.FAT;
+            } ));
+```
+
+#### 多级分组
+```java
+    // 在groupingBy之后传递groupingBy
+    Map<Dish.Type, Map<CaloricLevel, List<Dish>>> dishesByTypeCaloricLevel =
+            menu.stream().collect(
+                    groupingBy(Dish::getType,
+                            groupingBy(dish -> {
+                                if (dish.getCalories() <= 400) return CaloricLevel.DIET;
+                                else if (dish.getCalories() <= 700) return CaloricLevel.NORMAL;
+                                else return CaloricLevel.FAT;
+                            } )
+                    )
+            );
+```
+
+#### 按子组收集数据
+
+传递给第一个groupingBy的第二个收集器可以是任何类型，而不一定是另一分组个groupingBy，只要是一个收集器就好了。
+```java
+    // 分类查找各自菜单中热量最高的菜肴
+    Map<Dish.Type, Optional<Dish>> mostCaloricByType =
+            menu.stream()
+                    .collect(groupingBy(Dish::getType,
+                            collectingAndThen(maxBy(comparingInt(Dish::getCalories)),
+                            Optional::get)));
+
+    // 分类，对每个类进行卡路里求和
+    Map<Dish.Type, Integer> totalCaloriesByType =
+            menu.stream().collect(groupingBy(Dish::getType,
+            summingInt(Dish::getCalories)));
+
+    // 分类，查看每个类中有哪些热量级别
+    Map<Dish.Type, Set<CaloricLevel>> caloricLevelsByType =
+            menu.stream().collect(
+            groupingBy(Dish::getType, mapping(
+            dish -> { if (dish.getCalories() <= 400) return CaloricLevel.DIET;
+                      else if (dish.getCalories() <= 700) return CaloricLevel.NORMAL;
+                      else return CaloricLevel.FAT; },
+            toCollection(HashSet::new) )));
+```
+
+### 分区
+由一个谓词（返回一个布尔值的函数）作为分类函数，它称分区函数`partitioningBy`
+
+```java
+    // 按照荤素分区
+    Map<Boolean, List<Dish>> partitionedMenu =
+            menu.stream().collect(partitioningBy(Dish::isVegetarian));
+    partitionedMenu.get(true);
+
+    // 分区之后获取各自分区中的热量最高的菜
+    Map<Boolean, Dish> mostCaloricPartitionedByVegetarian =
+            menu.stream().collect(
+                    partitioningBy(Dish::isVegetarian,
+                            collectingAndThen(
+                                    maxBy(comparingInt(Dish::getCalories)),
+                                    Optional::get)));
+```
+### 开发性能更好的收集器
 
 
 
+## 附录
 
+- 恒等函数 `Function.indentity()` 意味着中间结果和最终结果类型一致，不需要变换。
+
+- characteristics方法,返回一个不可变的Characteristics集合，它定义了收集器的行为——尤其是关于流是否可以并行归约，以及可以使用哪些优化的提示。Characteristics是一个包含三个项目的枚举。
+    - UNORDERED——归约结果不受流中项目的遍历和累积顺序的影响。
+    - CONCURRENT——accumulator函数可以从多个线程同时调用，且该收集器可以并行归约流。如果收集器没有标为UNORDERED，那它仅在用于无序数据源时才可以并行归约。
+    - IDENTITY_FINISH——这表明完成器方法返回的函数是一个恒等函数，可以跳过。这种情况下，累加器对象将会直接用作归约过程的最终结果。这也意味着，将累加器A不加检查地转换为结果R是安全的

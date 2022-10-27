@@ -1,16 +1,12 @@
 package java8.chapter05.demo01;
 
+import java8.chapter04.demo01.Dish;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.function.IntSupplier;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
+import java.util.List;
+import java.util.Optional;
+
 
 /**
  * @description
@@ -26,6 +22,5 @@ public class Trader {
     @Override
     public String toString() {
         return "Trader:" + this.name + " in " + this.city;
-
     }
 }
