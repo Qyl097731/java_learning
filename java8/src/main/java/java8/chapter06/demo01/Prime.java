@@ -3,6 +3,8 @@ package java8.chapter06.demo01;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 /**
  * @description
@@ -22,6 +24,7 @@ public class Prime {
             i++;
         }
         return list;
+
     }
 
     /**

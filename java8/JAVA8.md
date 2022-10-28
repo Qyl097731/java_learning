@@ -582,7 +582,9 @@ flagMap的工作模式图：
 ##### 迭代 iterate
 
 ```java
-    // 1. 斐波那契元组，映射成斐波那契数
+    // 1. 生成1-10
+    IntStream.iterate(1,i->i+1).limit(10)
+    // 2. 斐波那契元组，映射成斐波那契数
     Stream.iterate(new int[]{0, 1},
             t -> new int[]{t[1],t[0] + t[1]})
             .limit(10)
@@ -595,7 +597,7 @@ flagMap的工作模式图：
 `IntStream ones = IntStream.generate(() -> 1);` 生成全是1的流
 
 ```java
-    // 2. 打印斐波那契数列 通过实现IntSupplier来实现有状态的lambda
+    // 1. 打印斐波那契数列 通过实现IntSupplier来实现有状态的lambda
     IntSupplier fib = new IntSupplier(){
         private int previous = 0;
         private int current = 1;
@@ -739,3 +741,120 @@ flagMap的工作模式图：
     - UNORDERED——归约结果不受流中项目的遍历和累积顺序的影响。
     - CONCURRENT——accumulator函数可以从多个线程同时调用，且该收集器可以并行归约流。如果收集器没有标为UNORDERED，那它仅在用于无序数据源时才可以并行归约。
     - IDENTITY_FINISH——这表明完成器方法返回的函数是一个恒等函数，可以跳过。这种情况下，累加器对象将会直接用作归约过程的最终结果。这也意味着，将累加器A不加检查地转换为结果R是安全的
+
+## 并行数据处理与性能
+
+### 并行流
+`parallelStream`并行流对数据分块，并用不同的线程分别处理每个数据块的流。对并行流调用`sequential`方法就可以把它变成顺序流
+
+> 并行流内部使用了默认的ForkJoinPool（分支/合并框架），它默认的线程数量就是你的处理器数量，这个值是由`Runtime.getRuntime().availableProcessors()`得到的。
+> 可以通过`System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism","12");`修改线程池大小。
+> 注意availableProcessors方法虽然看起来是处理器，但它实际上返回的是可用内核的数量，包括超线程生成的虚拟内核。
+```java
+    // 1 + .. + 10
+    public static long sequentialSum(long n) {
+        return Stream.iterate(1L, i -> i + 1)
+                .limit(n)
+                .reduce(0L, Long::sum);
+    }
+
+    // 并行流
+    public static long parallelSum(long n) {
+        return Stream.iterate(1L, i -> i + 1)
+                .limit(n)
+                .parallel()
+                .reduce(0L, Long::sum);
+    }
+```
+
+其中整个并行执行过程如下:
+<img src="./images/1666966637078.jpg" />
+
+其实并行流不一定比串行执行更快，首先如果对顺序有要求，对前值有依赖，因而无法有效地把流划分为小块来并行处理，同时每次把操作递归地分到不同的线程也需要开销，就可能让程序的整体性能更差
+
+#### 错误使用并行流
+
+```java
+    public class Accumulator {
+        public long total = 0;
+        public void add(long value) { total += value; }
+    }
+
+    // 1.这里因为并行流共享total变量导致性能下降，会出现对total的竞争
+    public static long sideEffectParallelSum(long n) {
+        Accumulator accumulator = new Accumulator();
+        LongStream.rangeClosed(1, n).parallel().forEach(accumulator::add);
+        return accumulator.total;
+    }
+    // 2
+    public static long sideEffectSum(long n) {
+        Accumulator accumulator = new Accumulator();
+        LongStream.rangeClosed(1, n).forEach(accumulator::add);
+        return accumulator.total;
+    }
+
+```
+#### 高效使用并行流
+
+- 如果有疑问，测量。把顺序流转成并行流轻而易举，第一个也是最重要的建议就是用适当的基准来检查其性能。
+- 留意装箱。自动装箱和拆箱操作会大大降低性能。Java 8中有原始类型流（IntStream、LongStream、DoubleStream）来避免这种操作.
+- 有些操作本身在并行流上的性能就比顺序流差。特别是limit和findFirst等依赖于元
+  素顺序的操作，它们在并行流上执行的代价非常大。例如，findAny会比findFirst性
+  能好，因为它不一定要按顺序来执行。
+- 还要考虑流的操作流水线的总计算成本。流中数据处理时间越大，就越可能受益。
+- 对于较小的数据量，选择并行流几乎从来都不是一个好的决定。
+- 要考虑流背后的数据结构是否易于分解。例如，ArrayList的拆分效率比LinkedList高得多，因为前者用不着遍历就可以平均拆分，而后者则必须遍历。另外，用range工厂方法创建的原始类型流也可以快速分解。
+- 流自身的特点，以及流水线中的中间操作修改流的方式，都可能会改变分解过程的性能。例如，一个SIZED流可以分成大小相等的两部分，这样每个部分都可以比较高效地并行处理，但筛选操作可能丢弃的元素个数却无法预测，导致流本身的大小未知。
+- 终端操作中合并步骤的代价是大是小（例如Collector中的combiner方法）。如果这一步代价很大，那么组合每个子流产生的部分结果所付出的代价就可能会超出通过并行流得到的性能提升。
+
+一些流数据源适不适于并行:
+<img src="./images/1666968139598.jpg" />
+
+### 分支/合并框架
+
+分支/合并框架的目的是以递归方式将可以并行的任务拆分成更小的任务，然后将每个子任务的结果合并起来生成整体结果。它是ExecutorService接口的一个实现,它把子任务分配给线程池（称为ForkJoinPool）中的工作线程
+
+#### RecursiveTask<R>
+
+递归分解子任务，返回R的类型；如果没有返回类型，则实现RecursiveAction。
+
+需要实现`protected abstract R compute(); `，同时其拆分逻辑为：
+```java
+    if (任务足够小或不可分) {
+        顺序计算该任务
+    } else {
+        将任务分成两个子任务
+        递归调用本方法，拆分每个子任务，等待所有子任务完成
+                合并每个子任务的结果
+    }
+```
+
+##### 案例
+ 
+- 用分支/合并框架执行求和 （ForkJoinSumCalculator）
+
+#### 使用分支/合并框架的最佳做法
+
+- 对一个任务调用join方法会阻塞调用方，直到该任务做出结果。因此，有必要在两个子任务的计算都开始之后再调用它。否则，你得到的版本会比原始的顺序算法更慢更复杂，因为每个子任务都必须等待另一个子任务完成才能启动。
+- 不应该在RecursiveTask内部使用ForkJoinPool的invoke方法。相反，你应该始终直接调用compute或fork方法，只有顺序代码才应该用invoke来启动并行计算。
+- 对子任务调用fork方法可以把它排进ForkJoinPool。同时对左边和右边的子任务调用它似乎很自然，但这样做的效率要比直接对其中一个调用compute低。这样做你可以为其中一个子任务重用同一线程，从而避免在线程池中多分配一个任务造成的开销。
+- 调试使用分支/合并框架的并行计算可能有点棘手。特别是你平常都在你喜欢的IDE里面看栈跟踪（stack trace）来找问题，但放在分支/合并计算上就不行了，因为调用compute的线程并不是概念上的调用方，后者是调用fork的那个。
+- 和并行流一样，你不应理所当然地认为在多核处理器上使用分支/合并框架就比顺序计算快。我们已经说过，一个任务可以分解成多个独立的子任务，才能让性能在并行化时有所提升。所有这些子任务的运行时间都应该比分出新任务所花的时间长；一个惯用方法是把输入/输出放在一个子任务里，计算放在另一个里，这样计算就可以和输入/输出同时进行。此外，在比较同一算法的顺序和并行版本的性能时还有别的因素要考虑。就像任何其他Java代码一样，分支/合并框架需要“预热”或者说要执行几遍才会被JIT编译器优化。这就是为什么在测量性能之前跑几遍程序很重要，我们的测试框架就是这么做的。同时还要知道，编译器内置的优化可能会为顺序版本带来一些优势（例如执行死码分析——删去从未被使用的计算）。
+
+#### 工作窃取
+
+每个子任务所花的时间可能天差地别，要么是因为划分策略效率低，要么是有不可预知的原因，比如磁盘访问慢，或是需要和外部服务协调执行。分支/合并框架工程用一种称为<b>工作窃取（work stealing）</b>的技术来解决这个问题
+
+<b>工作窃取：</b> 每个线程都把分配给它的任务保存在一个双向列表中，如果执行完毕当前的任务，就会从队列头摘除该任务，执行下一个任务执行，但是如果执行完毕，队列为空，就会从其他线程的任务队列尾部“偷走”一个线程，直到所有的任务都执行完毕。
+
+### Spliterator
+
+可分迭代器，自Java8之后引入的新街口，是一种拆分流的自动机制。
+
+```java
+    public interface Spliterator<T> { 
+        boolean tryAdvance(Consumer<? super T> action); 
+        Spliterator<T> trySplit(); 
+        long estimateSize(); 
+        int characteristics(); 
+ }```
