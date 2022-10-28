@@ -747,6 +747,16 @@ URCConnection的子类。可以获得和设置请求方法、确定是否重定�
 
 ## 客户端Socket
 
+### 构建Socket
+
+`public Socket()` 创建未连接的Socket
+
+`public Socket(Proxy proxy)` 通过中间代理进行Socket连接
+
+`protected Socket(SocketImpl impl) throws SocketException `
+
+`public Socket(String host, int port) throws UnknownHostException, IOException`
+
 ### 用Socket从服务器读取数据
 
 #### 案例
@@ -796,6 +806,8 @@ URCConnection的子类。可以获得和设置请求方法、确定是否重定�
 - 获得Socket信息(SocketInfo)
 
 ## 设置Socket选项
+
+设置Socket所依赖的原生socket如何收发数据。客户端Socket：
 
 - TCP_NODELAY 
    - Nagle算法：小数据包组合成大大数据包一起发送。需要远程主机对前一个包的确认才能继续发送数据包。存在这重大的延时问题。
@@ -876,9 +888,87 @@ URCConnection的子类。可以获得和设置请求方法、确定是否重定�
 
 #### 案例
 
-- 线程池的daytime服务器
+- 线程池的daytime服务器(PooledDaytimeServer)
+
+### 用Socket写服务器
+
+#### 案例
+
+- echo服务器（EchoServer）
+
+### 关闭服务器Socket
+
+关闭ServerSocket之后，就释放本地一个端口，同时中断所有与之关联的Socket。ServerSocket关闭后不能再重连。
+
+检查是否打开`server.isBound() && !server.isClosed()` 已经绑定过端口且未关闭。
+
+### 日志
+
+#### 日志记录内容
+
+- 请求
+- 服务器错误
+
+通常一个连接一个记录，每个连接的多个操作也都需要记录。错误日志主要记录服务器运行期间发生的意外异常。
+
+##### 案例
+
+- 记录请求和错误的daytime服务器
+
+可以通过配置i运行时环境，把日志放在一个更持久的目标位置。建议在配置文件中设置日志的位置，这样改变日志位置而无需重新编译代码。`-Djavautil.logging.config.file=_filename_`进行设置。
+
+### 构造服务器Socket
+
+`public ServerSocket() throws IOException`
+
+`public ServerSocket(int port) throws IOException`
+
+`public ServerSocket(int port, int backlog) throws IOException`
+
+`public ServerSocket(int port, int backlog, InetAddress bindAddr) throws IOException`
+
+- baklog：入站链接的请求队列长度
+- InetAddress：指定特定的本地IP地址
+    - <b>为什么要指定IP：</b>因为一个主机可能有多个网卡，会存在多个IP，指定了IP就使得绑定了唯一的应用程序，否则可能会同时监听`IP1:3306、IP2：3306、…`·
+- port：指定端口
+    - 端口可以传入0，这样系统会为我们选择可用的端口号。这样子由系统指定的端口就称为匿名端口。对于多Socket协议很有用。如<b>被动FTP:</b>，客户端连接到服务器的21端口（由服务器指定），之后传输文件的时候，服务器开始监听所有可用端口，就可以让系统分配数据返回的端口，然后服务器只要告诉客户端Socket去连接该端口获取数据即可。这种情况下，服务器就不必提前知道不同会话使用的数据端口。
+> <b>主动FTP：</b>由客户端监听服务器与之连接的临时端口，而不是由服务器监听。
 
 
+#### 案例
+
+- 查看本地端口(LocalPortScanner)
+
+### 获得服务器Socket的有关信息
+
+- 在多网卡的主机中未指定IP就可以通过`public InetAddress getInetAddress()`查看绑定的IP，如果还没分配就返回null.
+- 将端口号指定为0的时候，可以通过`public int getLocalPort()`查看指定的IP，如果没有分配就返回-1.
+
+### Socket选项
+
+指定ServerSocket依赖原生socket如何收发数据。服务端Socket：
+
+- SO_TIMEOUT
+    - 默认0，永不超时
+    - 通过`setSoTimeout(int timeout)`设置
+- SO_REUSEADDR
+    - 防止新Socket绑定到一个之前使用的端口，此时可能原Socket的数据正在网络传输。
+    - 通过`setReuseAddress(boolean on)`进行设置
+- SO_RCVBUF
+    - 设置服务器Socket接收的客户端Socket默认接收缓冲区大小。一般用默认值
+    - 通过`setReceiveBufferSize(int size)`进行设置
+    
+### HTTP服务器
+
+#### 案例
+
+- 单文件服务器(SingleFileHTTPServer)
+- 重定向器Redirector（Redirector）
+- 功能完备的HTTP服务器(JHTTP)
+
+### 总结
+
+直到这一章仍不能很好解决大流量，可以利用低优先级的线程缓存热点数据、非阻塞式IO和通道来代替线程和流。
 
 
 
