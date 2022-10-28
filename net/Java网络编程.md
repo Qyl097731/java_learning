@@ -970,5 +970,122 @@ URCConnection的子类。可以获得和设置请求方法、确定是否重定�
 
 直到这一章仍不能很好解决大流量，可以利用低优先级的线程缓存热点数据、非阻塞式IO和通道来代替线程和流。
 
+## 安全Socket
 
+- SSL（Security Socket Layer）：安全Socket层版本3，允许Web浏览器和其他的TCP客户端基于各种级别的机密性和认证与HTTP和其他TCP服务器对话。
 
+- TLS（Transport Layer Security）：传输层安全
+
+`javax.net.ssl` 定义Java安全网络通信API的抽象类
+
+`javax.net` 替代构造函数创建安全Socket 的抽象Socket工厂类
+
+`java.security.cert` 处理SSL所需公开密钥证书的类
+
+`com.sun.net.ssl` JSSE参考视线中实现加密算法和协议的具体类。
+
+### 保护通信
+
+经过开放通道（Internet）的秘密通信绝对需要对数据加密.现实中大多都是基于密钥思想，密钥不局限于文本，位数越多，破解越难。
+
+- 对称密钥：加密解密使用相同的密钥，所以很容易被窃取，数据容易被解密。
+- 非对称密钥：加密解密使用不同的密钥。一个密钥称为公钥，用于加密数据，可以提供给任何人。另一个密钥称为私钥，用于解密，必须秘密保存，只有通信的一方拥有它。
+    - 具体过程：A先向B请求到公钥，之后加密后发送给B，B通过自己的密钥解析数据。
+    - 实际工作流程：实际中，公钥加密数据是CPU密集型的，所以一般都不直接加密数据，而是A通过B的公钥加密自己的密钥，发送给B之后，B就知道了A的密钥。A用自己的密钥对数据加密发送给B，B获取到数据后通过之前接收到的A密钥进行解密。
+    - 用于身份认证和消息完整性检查。但是黑客可以通过直接把A加密之后的密钥替换成自己用B的公钥加密后的密钥，来发起攻击。
+    
+### 创建安全客户端Socket
+
+通过工厂模式创建SSLSocket
+
+```java
+    // 简单获取Socket实例
+    SocketFactory factory = SSLSocketFactory.getDefault();
+    Socket socket = factory.createSocket("login.ibiblio.org", 7000);
+```
+
+其中SocketFactory含有5个`createSocket()`,都与原生Socket构造函数所传参数意义一致，不再演示。
+
+#### 案例
+
+- HttpsClient(HttpsClient)
+
+### 选择密码组
+
+JSSE支持实现认证和加密算法的不同组合，Oracle为Java捆绑的实现仅支持128位AES加密，IAIK的iSaSiLk支持256位AES加密。
+
+> 如果要实现256位加密，需要安装JCE非受限密码策略文件。
+
+`getSupportedCipherSuites`获取指定的Socket所有可用的算法组合
+
+`setEnabledCipherSuites` 设置这个Socket允许使用哪些密码组
+
+- 每个算法名字都分为4部分，如`SSL_DH_anon_EXPORT_WITH_DES40_CBC_SHA`表示安全Socket（SSL）版本3，密钥协商Fiffie-Hellman方法，没有身份验证，40
+位密钥的数据加密标准算法，密码块链以及安全散列算法校验和。
+
+- 一般来讲TLS_ECDHE开头并且SHA256、SHA384结尾的密码组是当前管饭使用的最强的加密算法。
+
+- DES/AES是块加密：前者总是加密64位，不足会补足；后者可以128、192、256位、如果不是块大小的整数倍，需要补足。
+- 基于RC4的加密是流加密，更适合一次发送一字节的协议。
+
+### 事件处理器
+
+认证的网络通信通常要比网络通信慢，所以需要异步处理连接。
+
+只要实现该方法就可以完成握手事件通知：
+
+`public interface HandshakeCompletedListener extends EventListener {
+     void handshakeCompleted(HandshakeCompletedEvent var1);
+ }
+`
+
+### 会话管理
+
+SSL常用于Web服务器：可以使多个Socket共用相同的公开密钥和私有密钥，多个Socket都建立在一个相同的会话中，只有会话中的第一个Socket需要生成和交换密钥带来的开销。
+
+如果短时间内对一台主机的一个端口打开多个安全Socket，JSSe会重用这个会话密钥，实现Socket间的会话共享。虽然提升了性能，但是公用密钥使得安全性下降。
+
+可以通过`setEnableSessionCreation`禁用Session、`startHandshake()` 重新建立Session
+
+### 客户端模式
+
+在安全通信中，服务器需要使用适当的证书认证自己，但是客户端一般不想要去证明自己的身份。在安全性的应用程序中，建议客户端也提供凭证。
+
+`setUseClientMode`设置true时表示是客户端，不需要凭证；反之需要凭证。
+服务器端可以使用`setNeedClientAuth()`来要求与他连接的客户端都要认证（或者不认证）
+
+### 创建安全服务器Socket
+
+`SSLServerSocket`与客户端的安全Socket类似，不多解释。
+
+但是服务器端的安全Socket一般只支持服务器认证，不支持加密，为了同时加密，服务器端安全Socket需要通过SSLContext对象创建充分配置和初始化的安全服务器Socket。具体过程如下：
+
+- 使用keytool生成公开密钥和证书
+- 花钱请可信任的第三方（如Comodo）认证你的证书。
+- 为你使用的算法创建一个SSLContext。
+- 为你要使用的证书源创建一个TrustManagerFactory
+- 为你要使用的密钥类型创建一个KeyManagerFactory
+- 为密钥和证书数据库创建一个KeyStore对象（Oracle默认值是JKS）
+- 用KeyStore机器口令短语初始化KeyManagerFactory
+- 用KeyStore即口令端口初始化KeyManagerFactory
+- 用KeyManagerFactory中的密钥管理器、TrustManagerFactory中的信任管理器和一个随即源来初始化上下文
+
+#### 案例
+- SecureOrderTask(SecureOrderTask)
+    - 口令创建：`keytool -genkey -alias ourstore -keystore jnp4e.keys`
+
+当然JDK存在许多anon类型的密码组，不需要认证。
+
+### 配置SSLServerSocket
+
+#### 通过SSLServerSocket配置密码组
+
+可以使得该服务器Socket接收的所有Socket都使用这些密码组。参见`SecureOrderTask`
+
+#### 会话管理
+
+服务端如果禁用会话，那么客户端需要会话的话需要为每个Socket再次完成握手。
+
+#### 客户端模式
+
+参见前面客户端Socket的客户端模式的设置。
