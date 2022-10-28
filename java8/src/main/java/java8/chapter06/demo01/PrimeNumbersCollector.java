@@ -42,12 +42,11 @@ public class PrimeNumbersCollector implements Collector<Integer, Map<Boolean, Li
 
     @Override
     public Function<Map<Boolean, List<Integer>>, Map<Boolean, List<Integer>>> finisher() {
-
-        return null;
+        return Function.identity();
     }
 
     @Override
     public Set<Characteristics> characteristics() {
-        return null;
+        return Collections.unmodifiableSet(EnumSet.of(Characteristics.IDENTITY_FINISH));
     }
 }
