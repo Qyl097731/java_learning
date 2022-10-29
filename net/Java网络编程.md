@@ -1089,3 +1089,151 @@ SSL常用于Web服务器：可以使多个Socket共用相同的公开密钥和�
 #### 客户端模式
 
 参见前面客户端Socket的客户端模式的设置。
+
+## 非阻塞I/O
+
+与CPU交互的速度排序：内存 > 磁盘 > 网络。
+
+为了网络能够CPU尽量不等待网络，可以通过缓冲和多线程。
+
+在Java1.4之后引入了非阻塞I/O：适用于一个线程需要负责多个连接，可以选取一个已经准备好接受数据的连接，尽快填充尽可能多数据后，转向下一个已经准备好的连接。
+
+### 一个示例客户端
+
+- 通道：相比传统的客户端获取Socket的输入和输出流，利用通道，可以直接写入通道本身，直接写入ByteBuffer对象。一般不能保证写入缓冲区的所有字节。
+```java
+    // 指定Socket地址
+    SocketAddress rama = new InetSocketAddress("rama.poly.edu",19);
+    // 创建通道 阻塞式创建，创建完毕后才能执行后续代码
+    SocketChannel client = SocketChannel.open(rama);
+    // 初始化ByteBuffer
+    ByteBuffer buffer = ByteBuffer.allocate(74)
+    // 通过通道读取
+    int bytesRead = client.read(buffer)
+    // 通过通道讲读取的数据写入与System.out连接的输出通道中
+    WritableByteChannel output = Channels.newChannel(System.out)
+    // 回绕缓冲区 读取数据的开头而不是末尾开始写入
+    buffer.flip()
+    out.write(buffer)
+
+    // 要重用缓冲区 ，不然每次创建新的缓冲区，会降低性能。 
+    buffer.clear
+```
+
+#### 案例
+
+- 一个基于通道的chargen客户端(ChargenClient)
+
+### 一个示例服务器
+
+通道和缓冲区主要用于需要高效处理很多并发连接的服务器系统。
+
+```java
+    // 创建一个服务器Socket管道
+    ServerSocketChannel serverChannel = ServerSocketChannel.open();
+
+    // 开始时通道不会监听任何端口,需要自己绑定
+    serverChannel.bind(new InetSocketAddress(19);
+
+    // 阻塞式监听客户端请求
+    SocketChannel clientChannel = serverChannel.accept();
+   
+    // 设置客户端通道处于非阻塞
+    clientChannel.configureBlocking(false);
+   
+    // 为了accept也是非阻塞，可以进行设置 ,如果没有入站链接，会立即返回null
+    serverChannle.configureBlocking(false);
+   
+    // 通过Selector，允许程序迭代处理所有准备好的连接
+    Selector selector = Selector.open()
+   
+    // 接下来，使用每个通道的register()方法向监听这个通道的选择器进行注册,对于服务器Socket，关心的操作式accept
+    serverChannel.register(selector,SelectionKey.OP_ACCEPT)
+
+    // 对于客户端Socket，需要直到是否京准备好数据写入通道，关注op_write
+    SelectionKey key = clientChannel.register(selector,SelectionKey.OP_WRITE);
+    
+    // 对于多个SelectionKey，只要关注客户端通道的键，因为一个服务器多个客户端。
+    // 每个SelectionKey都有一个任意的Object类型的附件，保存一个指示当前连接状态的对象。将要写入网络区的缓冲区存储在这个对象中。
+    // 缓冲区空，就需要重新填满。用复制到个缓冲区的数据来填充数据，要写到缓冲区开始位置
+    // 回绕缓冲区，从而可以排空，并附加到通道的键上。
+    ByteBuffer buffer = ByteBuffer.allocate(74)
+    buffer.put(rotation,0,72)
+    buffer.put((byte)'\r')
+    buffer.put((byte)'\n')
+    buffer.flip()
+    key2.attach(buffer)
+
+    // 通过对select方法的调用，检查是否有可操作的数据
+    while(true){
+        selector.select()
+    }
+    
+    // 选择器找到了就绪的通道，就会返回一个Set，对应每个通道的SelectionKey对象
+    Set<SelectionKey> readyKeys = selector.selectedKeys()
+    Iterator iterator = readyKeys.iterator();
+    while(iterator.hasNext()){
+        SelectionKey key = iterator.next();
+        // 再次调用select，如果这个通道再次就绪，就会把这个通道在增加到就绪集合。
+        iterator.remove();
+    }
+    
+    // 如果一个就绪的是服务器通道，程序就会接受一个新Socket通道，添加到选择器。
+    // 如果是一个Socket通道，程序就会相同到写入缓冲区尽可能多的数据。
+    try{
+        if(key.isAcceptable()){
+            ServerSocketChannel server =(ServerSocketChannel) key.channel();
+            SocketChannel conn = server.accept()
+            conn.configureBlocking(false);
+            conn.register(selector,SelectionKey.OP_WRITE)
+            // 为客户端建立缓冲区
+        } else if(key.isWritable()){
+            SocketChannel client = (CocketChannel) key.channel
+            // 向通道写入数据
+        }   
+    }
+    
+    // 获取键的附件，转换为ByteBuffer，如果缓冲区有剩余没写的数据就写入通道，否则就用rotation数组的下一行数据重写填充缓冲区
+    ByteBuffer buffer = (ByteBuffer) key.attachment()
+    if(!buffer.hasRemaining()){
+        // 用下一行数据重新填充缓冲区，
+        // 确定最后一行从哪里开始
+        buffer.rewind();
+        int first = buffer.get();
+        // 递增到下一个字符
+        buffer.rewind();
+        int position = first - ' ' + 1;
+        buffer.put(rotation,position,72);
+        buffer.put((char) '\r')
+        buffer.put((char)'\n')
+        buffer.flip()
+    }   
+    client.write(buffer)
+    
+    // 客户端中断Socket，取消键
+    catch(IOException ex){
+        key.cancel();
+        try{
+            key.channel().close();
+        }catch(IOException cex){}
+    }
+```
+
+#### 案例
+
+- 一个非阻塞的chargen服务器(ChargenServer)
+
+### 缓冲区
+
+- 流是基于字节的，通道基于块的
+- 通道和缓冲区支队同一对象的读/写（虽然不总是如此）
+
+缓冲区的四个关键部分:
+- position：缓冲区中将读取或者写入的下一个位置。从0开始，最大值等于缓冲区的大小。
+- capacity：缓冲区可以保存的元素的最大数目，容量在创建之后不能修改。
+- limit：缓冲区中可访问数据的末尾位置。即使capacity > limit 也不能超过limit的限制。
+- mark：缓冲区中客户端指定的索引。通过mark()将标记设置为当前位置。通过reset()可以将当前位置设置为标记的位置。如果mark < position 则该mark无效。
+
+
+
+
