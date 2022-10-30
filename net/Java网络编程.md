@@ -1401,4 +1401,97 @@ mark，如果使用了mark、reset会应用于所有的缓冲区。
 
 `cancel`取消SelectionKey对象的注册，避免选择器再次查询它是否就绪。
 
+## UDP
 
+- TCP安全、需要建立连接、有序、以流为基础进行数据收发，但是代价就是速度慢。用于文件等需要数据的可靠性。
+- UDP不安全，速度快，不能确保有序，不需要连接、以数据包作为收发数据。用于电话、视频等允许有部分丢失。
+
+### UDP协议
+
+可以用UDP实现可靠的文件传输协议，如NFS、FTP、FSP。传输层不保证数据可靠，通过应用层来进行可靠性检查。
+
+组播Socket是UDP socket的一种相当简单的变体。
+
+Java中UDP的实现分为两个类: DatagramPacket 和 DatagramSocket
+
+- DatagramPacket 将数据字节填充到UDP包中，由你来解包接收的数据包。
+- DatagramSocket 可以收发UDP数据报。通过该类接收发送DatagramPacket。
+
+不建立连接，数据收到后，具体的分发由应用程序来指定。
+
+### UDP客户端
+
+UDP 不需要建立连接，先请求Java为自己随机分配一个可用的端口
+
+`try (DatagramSocket socket = new DatagramSocket(0))`
+
+UDP不像TCP那样会出现各种异常，UDP很容易悄无声息失败,所以要设置超时
+
+`socket.setSoTimeout(10000);`
+
+建立收发的数据包，其中发送的数据包要指明远程的主机和端口
+```java
+    InetAddress host = InetAddress.getByName("time.nist.gov");
+    DatagramPacket request = new DatagramPacket(new byte[1],1,host,13);
+    // 设置的大一些，不然会悄悄阶段响应
+    byte[] data = new byte[1024];
+    DatagramPacket response = new DatagramPacket(data,data.length);
+```
+
+发送并接收
+```java
+    socket.send(request);
+    socket.receive(response);
+```
+
+#### 案例
+
+- 一个daytime客户端(DaytimeUDPClient)
+
+### UDP服务器
+
+不需要匿名端口，绑定到对应的端口即可，先接收数据，后响应。
+
+#### 案例
+
+- daytime协议服务器(DaytimeUDPServer)
+
+### DatagramPacket
+
+UDP数据报基于IP数据报建立的，在首部添加了8字节，包括源端口，目标端口。
+
+<b>由于底层实现的问题，不建议创建超过8KB姐姐数据的DatagramPacket</b>
+
+接收数据报的时候不需要指定客户端地址和端口号，发送的时候要指定客户端IP和端口号。
+
+### DatagramSocket
+
+#### 案例
+
+- UDP discard客户端(UDPDiscardClient)
+- UDP discard服务器(UDPDiscardServer)
+
+### UDP Socket选项
+
+- SO_TIMEOUT
+   
+   要求在指定时间内必须有数据报入站
+
+- SO_RCVBUF
+    
+    指定接收缓冲区大小。UDP建议设置大一些，避免数据被丢弃。
+        
+- SO_SNDBUF
+
+    指定发送缓冲区大小。
+    
+- SO_REUSEADDR
+
+    是否允许多个数据报Socket同时绑定到相同的端口和地址。如果允许，那么接收到的数据包将服饰给绑定的所有Socket。可以实现组播。
+
+- SO_BROADCAST
+
+    是否允许一个Socket向广播地址收发数据报。UDP广播常用于DHCP等协议，这些协议需要与本地网络中的服务器通信，但是不需要预先知道服务器的地址。同时如果要使用该选项，不能绑定到特定地址的socket
+    ，应该DatagramPacket(int port)构造函数。
+    
+- IP_TOS
