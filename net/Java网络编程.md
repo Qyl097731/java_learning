@@ -1234,6 +1234,171 @@ SSL常用于Web服务器：可以使多个Socket共用相同的公开密钥和�
 - limit：缓冲区中可访问数据的末尾位置。即使capacity > limit 也不能超过limit的限制。
 - mark：缓冲区中客户端指定的索引。通过mark()将标记设置为当前位置。通过reset()可以将当前位置设置为标记的位置。如果mark < position 则该mark无效。
 
+缓冲区常用的几个方法：
+- clear()：把位置设置为0，并将limit设置为capacity，并不是真正清空，原始数据仍旧在，只是通过后续数据的写入对原始数据进行覆盖。
+- rewind()：将位置设置为0，不改变limit，允许重新读缓冲区
+- flip()：将限度设置为当前位置，位置设置为0，希望读取当前缓冲区时使用。
+- remaining(): 返回缓冲区中当前位置Pos与limit标志位之间的元素数。
 
+#### 创建缓冲区
+
+##### 分配
+
+`allocate()`
+
+创建的缓冲区是居于Java数组实现，可以通过array() 和 arrayOffset()方法来访问。例如从通道读入缓冲区，然后从缓冲区获得这个数组。
+
+`byte[] data = buffer.array()`，但是这样子就对外暴露了数据，修改data会反映到缓冲区。一般都是获取该数组进行操作之后不再写缓冲区。
+
+##### 直接分配
+
+`allocateDirect()`不为缓冲区创建后备数组，直接内存访问，可以提升IO性能.
+
+`ByteBuffer buffer = ByteBuffer.allocateDirect(100)`
+
+##### 包装
+
+如果已经有了要输出的数据数组，一般要用缓冲区进行包装，而不是一次一部分的复制。
+
+```java
+    byte[] data = "Some data.".getBytes(StandardCharsets.UTF_8);
+    ByteBuffer buffer1 = ByteBuffer.wrap(data);
+```
+
+`wrap` 方法是对数组的引用，把该数组作为它的后备数组。
+
+#### 填充缓冲区
+
+```java
+    // 填充缓冲区 
+    // 填充了H ，此时position = 1
+    CharBuffer buffer = CharBuffer.allocate(12);
+    buffer.put('H');
+
+    // 获取缓冲区 position的字符 显然是null
+    buffer.get();
+
+    // 需要回绕缓冲区 limit = position = 1,position = 0
+    buffer.flip();
+
+    // 排空缓冲区
+    // 每次有剩余的数据，我就继续读
+    String result = "";
+    while(buffer.hasRemaining()){
+        result += buffer.get();
+    }
+```
+
+#### 批量方法
+
+`public CharBuffer get(char[] dst, int offset, int length) `
+`public CharBuffer put(char[] src, int offset, int length)`
+
+#### 数据转换
+
+可以将一定数目的字节转换成对应的数据类型放入缓冲区，如4字节--->int、float,完成了DataOutputStream和DataInputStream能完成的任务
+
+##### 案例
+
+- Intgen服务器(IntgenServer)
+
+
+#### 视图缓冲区
+
+从指定位置开始把底层的数据转换成相应类型的数据。
+
+因为Channel只能读取只包含一种特定基本数据类型的元素的ByteBuffer，所以创建一个视图缓冲区会方便很多。
+
+##### 案例
+
+- Intgen客户端(IntgenClient)
+
+#### 压缩缓冲区
+
+`compact` 将所有的剩余缓冲数据移动到缓冲区开头，之后缓冲区的position设置为数据结尾，从而可以把position之后数据进行覆盖，从而写入更多数据。
+
+##### 案例
+
+- Echo服务器(EchoServer)
+
+#### 复制缓冲区
+
+`duplicate`复制的缓冲区共享相同数据，但是每个缓冲区都有独立的mark、limit、position。
+
+##### 案例
+
+- 提供一个文件的非阻塞HTTP服务器(NonblockingSingleFileHttpServer)
+
+#### 分片缓冲区
+
+与复制类似，但是复制从0开始，而分片从position复制，是原缓冲区的一个子序列。可以来实现只读数据，把首部和数据进行分开。
+
+#### 标记和重置
+
+mark，如果使用了mark、reset会应用于所有的缓冲区。
+
+#### Object方法
+
+缓冲区相等的条件
+- 相同类型
+- 剩余元素个数相同
+- 相同相对位置上的剩余元素彼此相等
+
+### 通道
+
+三个重要的通道类:SocketChannel、ServerSocketChannel、DatagramChannel。
+
+#### SocketChannel
+
+可以读写TCP Socket，通过ByteBuffer进行读写。
+
+- 散布
+一个Socket源填充多个缓冲区 `read(ByteBuffer[] dsts)`
+- 聚集
+多个缓冲区写入到一个Socket `write(ByteBuffer[] dsts)`
+
+#### ServerSocketChannel
+
+主要是`accept`接收入站请求
+
+### Channels类
+
+可以完成流与通道的相互转换。
+
+### 异步通道（Java7）
+
+`AsynchronousSocketChannel`、`AsynchronousServerSocketChannel`会理解返回，甚至在IO完成前就会返回，数据通过Future或CompletionHandler
+进一步处理，connect()和accept()也会异步执行，并且返回Future.虽然可以多线程可以安全共享一个AsynchronousSocketChannel、AsynchronousServerSocketChannel
+，但一次只能有一个线程使用这个通道。
+
+如果使用Future非常适合一种特定的顺序获取结果，如果对顺序没有要求可以使用CompletionHandler。
+
+### Socket选项（Java7）
+
+许多7以前的Channel具体类都实现了NetworkChannel接口，主要支持各种TCP选项，如TCP_NODELAY、SO_TIMEOUT等
+
+`getOption`、`setOption`、`supportedOption`获取、设置、列出所支持的选项。
+
+#### 案例
+
+- 列出支持的选项(OptionSupport)
+
+### 就绪选择
+
+选择读写时不阻塞的Socket，主要针对于服务器，对于打开多个窗口并运行多个并发连接的客户端也可以利用这个特性。
+
+为了完成就绪选择，要将不同的通道注册到一个Selector对象，每个通道分配一个SelectionKey。之后询问Selector来获取已经就绪的键集合。
+
+#### Selector
+
+- `selectNow()` 非阻塞获取当前已经准备处理的连接
+- `select()`、`select(long timeout)`阻塞地获取当前已经准备处理的连接
+- `selectedKeys()` 返回已经就绪的通道
+
+#### SelectionKey
+
+相当于通道的指针，保存通道上连接的状态。一个通道可以注册到多个选择器。
+
+`cancel`取消SelectionKey对象的注册，避免选择器再次查询它是否就绪。
 
 
