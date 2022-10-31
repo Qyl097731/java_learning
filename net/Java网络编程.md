@@ -1495,3 +1495,58 @@ UDP数据报基于IP数据报建立的，在首部添加了8字节，包括源�
     ，应该DatagramPacket(int port)构造函数。
     
 - IP_TOS
+
+    指定业务流类型，但是几乎不再使用。
+    
+### 一些有用的应用程序
+
+-  简单的UDP客户端(UDPPoke)
+- 一个UDPtime客户端(UDPTimeClient)
+- UDPServer 类(UDPServer)
+- 一个UDP discard服务器(FastUDPDiscardServer)
+- 一个UDP echo服务器(UDPEchoServer)
+- UDP Echo客户端(UDPEchoClietn)
+
+### DatagramChannel
+
+非阻塞的UDP应用程序，网络没有准备好就立即返回
+
+#### 案例
+
+- 基于通道的UDPDiscardServer(UDPDiscardServerWithChannel)
+- 基于通道的UDPEchoServer(UDPEchoServerWithChannels)
+- 基于通道显示的UDP echo客户端(UPDEchoClientWithChannels)
+
+#### Socket选项（Java7之后）
+
+- SO_SNDBUF
+    
+   发送数据报的缓冲区大小
+
+- SO_RCVBUF
+
+    接收数据报的缓冲区大小
+
+- SO_REUSEADDR
+
+    是否允许地址重用
+    
+- SO_BROADCAST
+
+    是否禁用广播
+    
+- IP_TOS
+
+    业务流类型
+    
+- IP_MULTICAST_IF
+
+    用于组播的本地网络接口
+    
+- IP_MULTICAST_TTL
+
+    用于组播数据报的生存时间值
+    
+- IP_MULTICAST_LOOP
+
+    启用组播数据报的回送
