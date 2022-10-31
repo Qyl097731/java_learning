@@ -868,6 +868,305 @@ flagMap的工作模式图：
     
     WordCounter
     
- 
+## 重构、测试、调试
+
+### 重构
+
+#### 匿名类到Lambda表达式的转换
+
+- 匿名类和Lambda中的this和super的含义不同，匿名类中，this代表的是类自身，但是在Lambda中，它代表的是包含类；
+- 匿名类可以屏蔽包含类的变量，而Lambda表达式不能。
+
+在关于重载函数的重构的函数时，有时候需要指明Lambda的入参类型，避免歧义。
+
+#### 从 Lambda 表达式到方法引用的转换
+
+将复杂Lambda表达式抽取成方法引用。且尽可能使用静态辅助方法。
+
+#### 从命令式的数据处理切换到 Stream
+
+Stream API能更清晰地表达数据处理管道的意图。除此之外，通过短路和延迟载入以及利用现代计算机的多核架构，我们可以对Stream进行优化。
+
+#### 增加代码的灵活性
+
+利用Lambda可以带来灵活性：有条件的延迟执行和环绕执行
+
+- 有条件的延迟执行
+    
+    可以用来优化安全性检查以及日志输出:如下的日志输出更易读、封装性更好，只有在满足条件的情况下，才会执行后面的方法。
+    `logger.log(Level.FINER, () -> "Problem: " + generateDiagnostic());`
+
+- 环绕执行
+
+    抽取相同行为，用Lambda表达式代替。详见之前案例。
+
+### 重构OOS
+
+#### 策略模式
+
+通过Lambda表达式直接传递行为，来代替策略模式接口实现。
+
+#### 模板模式
+
+模板模式通过把大体框架搭建之后形成模板，子类通过继承来实现具体的过程。如下所示：
+
+```java
+    abstract class OnlineBanking {
+        public void processCustomer(int id){
+            Customer c = Database.getCustomerWithId(id);
+            makeCustomerHappy(c);
+        }
+        abstract void makeCustomerHappy(Customer c);
+    }
+```
+
+那么通过Lambda表达式就能直接传递行为参数，来省略继承。如下所示
+```java
+    public class OnlineBanking {
+        public void processCustomer(int id, Consumer<Customer> makeCustomerHappy){
+            Customer c = Database.getCustomerWithId(id);
+            makeCustomerHappy.accept(c);
+        }
+    }
+    new OnlineBankingLambda().processCustomer(1337, (Customer c) -> 
+        System.out.println("Hello " + c.getName());
+```
+
+#### 观察者模式
+
+当某个观察者的状态改变，从而同一个主题的观察者需要改变的时候，就可以通过Lambda表达式来传递notify的行为。
+
+#### 责任链模式
+
+一个处理对象可能需要在完成一些工作之后，将结果传递给另一个对象，这个对象接着做一些工作，再转交给下一个处理对象，以此类推。
+
+```java
+    public abstract class ProcessingObject<T> {
+        protected ProcessingObject<T> successor;
+        public void setSuccessor(ProcessingObject<T> successor){
+            this.successor = successor;
+        }
+        public T handle(T input){
+            T r = handleWork(input);
+            if(successor != null){
+                return successor.handle(r);
+            }
+            return r;
+        }
+        abstract protected T handleWork(T input);
+    }
+```
+
+那么同理可以通过Lambda表达式来替换handleWork的继承实现。通过andThen来实现职责链。
+
+```java
+    UnaryOperator<String> headerProcessing =
+            (String text) -> "From Raoul, Mario and Alan: " + text;
+    UnaryOperator<String> spellCheckerProcessing =
+            (String text) -> text.replaceAll("labda", "lambda");
+    Function<String, String> pipeline =
+            headerProcessing.andThen(spellCheckerProcessing);
+    String result = pipeline.apply("Aren't labdas really sexy?!!")
+```
+
+#### 工厂模式
+
+不暴露实例化逻辑，完成对象创建。如下所示：
+
+```java
+    public class ProductFactory {
+        public static Product createProduct(String name){
+            switch(name){
+                case "loan": return new Loan();
+                case "stock": return new Stock();
+                case "bond": return new Bond();
+                default: throw new RuntimeException("No such product " + name);
+            }
+        }
+    }
+```
+
+通过Lambda来完成实例化。如下所示：
+```java
+    final static Map<String, Supplier<Product>> map = new HashMap<>();
+    static {
+        map.put("loan", Loan::new);
+        map.put("stock", Stock::new);
+        map.put("bond", Bond::new);
+    }
+    public static Product createProduct(String name){
+        Supplier<Product> p = map.get(name);
+        if(p != null) return p.get();
+        throw new IllegalArgumentException("No such product " + name);
+    }
+```
+但是可扩展性不好。
+
+### 测试Lambda表达式
+
+-  测试使用 Lambda 的方法的行为
+
+通过直接结果集比较就好，不用过分关注中间过程。
+
+```java
+    public static List<Point> moveAllPointsRightBy(List<Point> points, int x){
+        return points.stream()
+                .map(p -> new Point(p.getX() + x, p.getY()))
+                .collect(toList());
+    }
+
+    @Test
+    public void testMoveAllPointsRightBy() throws Exception{
+        List<Point> points =
+                Arrays.asList(new Point(5, 5), new Point(10, 5));
+        List<Point> expectedPoints =
+                Arrays.asList(new Point(15, 5), new Point(20, 5));
+        List<Point> newPoints = Point.moveAllPointsRightBy(points, 10);
+        assertEquals(expectedPoints, newPoints);
+    }
+```
+
+- 将复杂的 Lambda 表达式分到不同的方法
+
+通过对复杂Lambda表达式进行抽取，之后通过对这些方法进行常规的测试。
+
+- 高阶函数的测试
+
+即传入函数返回新函数的情况。
+
+把Lambda抽取成小一些的Lambda表达式，之后对这些表达式进行功能测试。最后集成之后再测试。
+
+### 调试
+
+Lambda非常难以进行栈跟踪。
+
+#### 使用日志调试
+
+可以通过peek()查看流的具体情况,如下:
+
+```java
+    List<Integer> result =
+            numbers.stream()
+                    // 查看当前数据
+                    .peek(x -> System.out.println("from stream: " + x))
+                    .map(x -> x + 17)
+                    // 查看增加17之后的数据
+                    .peek(x -> System.out.println("after map: " + x))
+                    .filter(x -> x % 2 == 0)
+                    // 查看过滤之后的数据
+                    .peek(x -> System.out.println("after filter: " + x))
+                    .limit(3)
+                    // 查看截断之后的数据
+                    .peek(x -> System.out.println("after limit: " + x))
+                    .collect(toList());
+```
+
+## 默认方法
+
+父类或者接口一旦改变，那么子类或者实现类都需要变动，显然是相当难维护，所以Java 8允许在接口内声明静态方法且引入了默认方法。
+
+```java
+    default void sort(Comparator<? super E> c){
+        Collections.sort(this, c);
+    }
+```
+
+> <b>静态方法及接口:</b>
+>
+> 同时定义接口以及工具辅助类（companion class）是Java语言常用的一种模式，工具类定
+  义了与接口实例协作的很多静态方法。比如，Collections就是处理Collection对象的辅
+  助类。由于静态方法可以存在于接口内部，你代码中的这些辅助类就没有了存在的必要，你可
+  以把这些静态方法转移到接口内部。为了保持后向的兼容性，这些类依然会存在于Java应用程
+  序的接口之中。
+
+如果不编译的话，即使添加了新接口也没有问题，但是一旦进行编译，就会报错了。
+
+> <b>不同类型的兼容性：二进制、源代码和函数行为</b>
+> 
+>   变更对Java程序的影响大体可以分成三种类型的兼容性，分别是：二进制级的兼容、源代码级的兼容，以及函数行为的兼容。
+>
+>   二进制级的兼容性表示现有的二进制执行文件能无缝持续链接（包括验证、准备和解析）
+和运行。比如，为接口添加一个方法就是二进制级的兼容，这种方式下，如果新添加的方法不
+被调用，接口已经实现的方法可以继续运行，不会出现错误。
+简单地说，源代码级的兼容性表示引入变化之后，现有的程序依然能成功编译通过。比如，
+向接口添加新的方法就不是源码级的兼容，因为遗留代码并没有实现新引入的方法,一旦引入就失败。
+>
+>   最后，函数行为的兼容性表示变更发生之后，程序接受同样的输入能得到同样的结果。比
+如，为接口添加新的方法就是函数行为兼容的，因为新添加的方法在程序中并未被调用（抑或
+该接口在实现中被覆盖了）。
+
+### 可选方法和行为的多继承
+
+#### 可选方法
+
+Java8以前为了方便扩展，通常需要一个接口的空实现，这些都是些毫无用处的模板代码；Java8之后就可以通过默认方法减少无效的默认模板。
+
+#### 行为的多继承
+
+简单的说：Java8多个接口都含有默认方法，我直接实现包含所需方法的接口，就可以直接使用这些方法了。相较于之前的实现多个接口的实现方式，其实只是简化了一些复用行为组合的方式。
+
+<img src="./images/1667229274957.jpg" />
+
+### 解决冲突的规则
+
+场景:多个接口含有相同函数签名（相同的入参、返回值）的默认方法。
+
+解决冲突的规则：
+
+- 类中的方法优先级最高。类和父类中的方法优先于其他类。
+- 如果无法依据第一条进行判断，那么子接口的优先级更高：函数签名相同时，优先选择拥有最具体实现的默认方法的接口，即如果B继承了A，那么B就比A更加具体。
+- 最后，如果还是无法判断，继承了多个接口的类必须通过显式覆盖和调用期望的方法，显式地选择使用哪一个默认方法的实现。
+
+#### 显式地消除歧义
+
+可以覆盖类中的hello方法，在它的方法体内显式地调用你希望调用的方法。Java 8中引入了一种新的语法X.super.m(…)，其中X是你希望调用的m方法所在的父接口
+
+如下所示，这里没有哪个接口的hello更具体
+```java
+    public interface A {
+        void hello() {
+            System.out.println("Hello from A");
+        }
+    }
+    public interface B {
+        void hello() {
+            System.out.println("Hello from B");
+        }
+    }
+    // 显式消除
+    public class C implements B, A {
+        void hello(){
+            B.super.hello();
+        }
+    }
+
+```
+
+#### 菱形继承问题
+
+```java
+    public interface A{
+        default void hello(){
+            System.out.println("Hello from A");
+        }
+    }
+    public interface B extends A { }
+    public interface C extends A { }
+    public class D implements B, C {
+        public static void main(String... args) {
+            new D().hello();
+        }
+    }
+```
+其继承关系如下所示：
+<img src="./images/1667231377987.jpg />
+因为继承关系如菱形，所以被称为菱形问题。
+
+只有A声明了一个默认方法。由于这个接口是D的父接口，代码会打印输出“Hello from A”
+
+- 如果B中也提供了一个默认的hello方法，并且函数签名跟A中的方法也完全一致，这时根据规则(2)，由于B比A更加具体，所以编译器会选择B中声明的默认方法。
+- 如果B和C都使用相同的函数签名声明了hello方法，就会出现冲突，需要显式地指定使用哪个方法。
+- 如果你在C接口中添加一个抽象的hello方法，这个新添加到C接口中的抽象方法hello比由接口A继承而来的hello方法拥有更高的优先级，但是没有该接口没有具体实现，所以必须类D中进行实现，否则程序无法通过编译。
+
 
 
