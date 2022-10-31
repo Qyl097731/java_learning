@@ -851,10 +851,23 @@ flagMap的工作模式图：
 
 可分迭代器，自Java8之后引入的新街口，是一种拆分流的自动机制。
 
+- 源码展示
 ```java
     public interface Spliterator<T> { 
         boolean tryAdvance(Consumer<? super T> action); 
         Spliterator<T> trySplit(); 
         long estimateSize(); 
         int characteristics(); 
- }```
+    }
+```
+
+- 特性
+<img src="./images/1667204833157.jpg" />
+
+- 例子 
+    
+    WordCounter
+    
+ 
+
+
