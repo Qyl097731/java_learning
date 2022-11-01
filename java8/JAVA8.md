@@ -1168,5 +1168,98 @@ Java8以前为了方便扩展，通常需要一个接口的空实现，这些都
 - 如果B和C都使用相同的函数签名声明了hello方法，就会出现冲突，需要显式地指定使用哪个方法。
 - 如果你在C接口中添加一个抽象的hello方法，这个新添加到C接口中的抽象方法hello比由接口A继承而来的hello方法拥有更高的优先级，但是没有该接口没有具体实现，所以必须类D中进行实现，否则程序无法通过编译。
 
+## 用Optional取代null
 
+### 应用Optional的几种模式
 
+#### 创建 Optional 对象
+
+- `Optional<Car> optCar = Optional.empty();`声明一个空的Optional
+
+- `Optional<Car> optCar = Optional.of(car); `依据一个非空值创建Optional
+
+- `Optional<Car> optCar = Optional.ofNullable(car); `可接受null的Optional
+
+#### 使用 map 从 Optional 对象中提取和转换值
+
+```java
+public String getCarInsuranceName(Optional<Person> person) { 
+     return person.flatMap(Person::getCar) 
+     .flatMap(Car::getInsurance) 
+     .map(Insurance::getName) 
+     .orElse("Unknown"); 
+}  
+```
+
+<b>optional不支持序列化</b>,解决如下：
+```java
+    public class Person {
+        private Car car;
+        public Optional<Car> getCarAsOptional() {
+            return Optional.ofNullable(car);
+        }
+    }
+```
+
+#### 默认行为及解引用 Optional对象
+
+- get()是这些方法中最简单但又最不安全的方法。如果变量存在，它直接返回封装的变量
+值，否则就抛出一个NoSuchElementException异常。
+- orElse(T other)它允许在Optional对象不包含值时提供一个默认值。
+- orElseGet(Supplier<? extends T> other)是orElse方法的延迟调用版，Supplier方法只有在Optional对象不含值时才执行调用。如果创建默认值是件耗时费力的工作，应该借此提升程序的性能
+- orElseThrow(Supplier<? extends X> exceptionSupplier)和get方法非常类似，Optional对象为空时都会抛出一个异常，但是使用orElseThrow你可以定制希望抛出的异常类型。
+- ifPresent(Consumer<? super T>)你能在变量值存在时执行一个作为参数传入的方法，否则就不进行任何操作
+
+#### 使用 filter 剔除特定的值
+
+```java
+    Optional<Insurance> optInsurance = ...; 
+    optInsurance.filter(insurance ->
+            "CambridgeInsurance".equals(insurance.getName()))
+            .ifPresent(x -> System.out.println("ok"));
+```
+
+### Optional实战
+
+- 用 Optional 封装可能为 null 的值
+`Optional<Object> value = Optional.ofNullable(map.get("key")); `
+
+- 异常与 Optional 的对比
+
+如果能转换，没有异常就返回包含了数字的Optional，否则返回空
+
+```java
+    public static Optional<Integer> stringToInt(String s) {
+        try {
+            return Optional.of(Integer.parseInt(s));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+```
+- 把所有内容整合起来
+
+场景：当一个方法只有传入正数字符串才返回该字符串对应的数值，其余都是返回0。
+```java
+    // 修改前
+    public int readDuration(Properties props, String name) {
+        String value = props.getProperty(name);
+        if (value != null) {
+            try {
+                int i = Integer.parseInt(value);
+                if (i > 0) {
+                    return i;
+                }
+            } catch (NumberFormatException nfe) { }
+        }
+        return 0;
+    }
+
+    // 修改后
+    public int readDuration(Properties props, String name) {
+        return Optional.ofNullable(props.getProperty(name))
+                .flatMap(OptionalUtility::stringToInt)
+                .filter(i -> i > 0)
+                .orElse(0);
+    }
+```
