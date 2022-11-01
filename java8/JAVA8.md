@@ -1263,3 +1263,59 @@ public String getCarInsuranceName(Optional<Person> person) {
                 .orElse(0);
     }
 ```
+
+## CompletableFuture
+  
+组合式异步编程
+
+### Future接口
+
+Java5的时候提出，建模了一种异步计算，返回一个执行运算结果的引用。
+
+#### 案例
+
+- FutureTest
+
+相较于CompletableFuture，它没有很好的流水线思想的体现：
+- 将两个异步计算合并为一个——这两个异步计算之间相互独立，同时第二个又依赖于第一个的结果。
+- 等待Future集合中的所有任务都完成。
+- 仅等待Future集合中最快结束的任务完成（有可能因为它们试图通过不同的方式计算同一个值），并返回它的结果。
+- 通过编程方式完成一个Future任务的执行（即以手工设定异步操作结果的方式）。
+- 应对Future的完成事件（即当Future的完成事件发生时会收到通知，并能使用Future计算的结果进行下一步的操作，不只是简单地阻塞等待操作的结果）
+
+### 实现异步API
+
+#### 使用定制的执行器
+
+线程池大小与处理器的利用率之比可以使用下面的公式进行估算：
+`Nthreads = NCPU * UCPU * (1 + W/C)`
+- NCPU是处理器的核的数目，可以通过Runtime.getRuntime().availableProcessors()得到
+- UCPU是期望的CPU利用率（该值应该介于0和1之间）
+- W/C是等待时间与计算时间的比率
+
+
+#### 案例
+- java8.chapter11.demo02.CompleteFutureTest
+
+> 计算密集型的操作，并且没有I/O，那么推荐使用Stream接口;反之，如果你并行的工作单元还涉及等待I/O的操作（包括网络连接等待），那么使用CompletableFuture灵活性更好
+
+### 对多个异步任务进行流水线操作
+
+#### 案例
+
+- java8.chapter11.demo03.Client
+
+### completion
+
+#### 案例
+
+价格查询器应用的优化
+- java8.chapter11.demo04.Client 
+
+#### 函数
+
+- allOf把futures整合起来生成一个新的future，通过join来等待所有的任务完成.
+- anyOf把futures整合起来生成一个新的future，通过join，只要有一个完成就返回.
+
+
+
