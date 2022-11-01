@@ -1317,5 +1317,89 @@ Java5的时候提出，建模了一种异步计算，返回一个执行运算结
 - allOf把futures整合起来生成一个新的future，通过join来等待所有的任务完成.
 - anyOf把futures整合起来生成一个新的future，通过join，只要有一个完成就返回.
 
+## 新的时间和日期API
 
+- Date：
+    - 无法表示日期，只能以毫秒的精度表示时间
+    - 年份的起始选择是1900年，月份的起始从0开始
+- Calendar：
+    - 拿掉了由1900年开始计算年份这一设计  
+    - 月份依旧是从0开始计算
+两个类都可变，所以不是线程安全的，不建议继续使用。
 
+### LocalDate、LocalTime、Instant、Duration 以及 Period
+
+#### LocalDate 和 LocalTime
+
+- LocalData提供了简单的日期，并不含当天的时间信息。另外，它也不附带任何与时区相关的信息
+- LocalTime类表示一天中的时间
+- LocalDateTime日期时间的合并，同时表示了日期和时间，但不带有时区信息
+
+##### 案例
+
+- LocalDateTimeTest
+
+#### 机器的日期和时间格式
+
+建模时间最自然的格式是表示一个持续时间段上某个点的单一大整型数，而Instant就是为此而出现的。
+
+#### Duration 或 Period
+
+```java
+// 获取两个时间间隔
+Duration d1 = Duration.between(time1, time2); 
+Duration d1 = Duration.between(dateTime1, dateTime2); 
+Duration d2 = Duration.between(instant1, instant2); 
+
+// 获取两个日期的间隔
+Period tenDays = Period.between(LocalDate.of(2014, 3, 8), 
+ LocalDate.of(2014, 3, 18));
+```
+
+### 操纵、解析和格式化日期
+
+```java
+    // 以比较直观的方式操纵LocalDate的属性
+    // 虽然返回的值已经变了，但是原来的对象没变
+    LocalDate date1 = LocalDate.of(2014, 3, 18);
+    LocalDate date2 = date1.withYear(2011);
+    LocalDate date3 = date2.withDayOfMonth(25);
+    LocalDate date4 = date3.with(ChronoField.MONTH_OF_YEAR, 9);
+
+    // 以相对方式修改LocalDate对象的属性
+    LocalDate date1 = LocalDate.of(2014, 3, 18);
+    LocalDate date2 = date1.plusWeeks(1);
+    LocalDate date3 = date2.minusYears(3);
+    LocalDate date4 = date3.plus(6, ChronoUnit.MONTHS);
+```
+
+#### TemporalAdjuster
+
+<img src="./images/1667290869312.jpg />
+
+```java
+LocalDate date1 = LocalDate.of(2014, 3, 18); 
+LocalDate date2 = date1.with(nextOrSame(DayOfWeek.SUNDAY)); 
+LocalDate date3 = date2.with(lastDayOfMonth());
+```
+
+#### 打印和解析日期-格式对象
+
+```java
+// 使用不同的格式器生成了字符串
+LocalDate date = LocalDate.of(2014, 3, 18);
+String s1 = date.format(DateTimeFormatter.BASIC_ISO_DATE); 
+String s2 = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+// 重创该日期对象的目的
+LocalDate date1 = LocalDate.parse("20140318", DateTimeFormatter.BASIC_ISO_DATE); 
+LocalDate date2 = LocalDate.parse("2014-03-18", DateTimeFormatter.ISO_LOCAL_DATE); 
+
+// 按照某个模式创建DateTimeFormatter
+DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy"); 
+LocalDate date1 = LocalDate.of(2014, 3, 18); 
+String formattedDate = date1.format(formatter); 
+LocalDate date2 = LocalDate.parse(formattedDate, formatter); 
+```
+
+<b>和老的java.util.DateFormat相比较，所有的DateTimeFormatter实例都是线程安全的,能在多个线程间共享这些实例</b>
