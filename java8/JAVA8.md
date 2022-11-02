@@ -1465,3 +1465,152 @@ Optional<Transaction> mostExpensive =
                                 .max(comparing(Transaction::getValue));
 ```
 
+## 函数式编程技巧
+
+### 无处不在的函数
+
+#### 高阶函数
+
+接收函数，返回函数。函数签名如下：
+`Function<Double,Double> differentiate(Function<Double,Double> func)`
+
+#### 科里化
+
+模块化函数，提升代码重用。
+
+比如，将摄氏度转换到华氏度的公式是CtoF(x) = x*9/5 + 32。
+
+```java
+// 提供一种简单的解法，它既能充分利用已有的逻辑，又能让converter针对每个应用进行定制。
+// 定义一个“工厂”方法，它生产带一个参数的转换方法
+static DoubleUnaryOperator curriedConverter(double f, double b){ 
+    return (double x) -> x * f + b; 
+} 
+DoubleUnaryOperator convertCtoF = curriedConverter(9.0/5, 32); 
+DoubleUnaryOperator convertUSDtoGBP = curriedConverter(0.6, 0); 
+DoubleUnaryOperator convertKmtoMi = curriedConverter(0.6214, 0);
+
+// 具体使用
+double gbp = convertUSDtoGBP.applyAsDouble(1000);
+```
+## Scala & Java
+
+### 简介
+
+- 属性声明
+```scala
+    // 特殊的打印占位符
+    // 属性字段的声明更像是UML图中属性字段的声明方式
+    object Beer {
+        def main(args: Array[String]){
+            var n : Int = 2
+            while( n <= 6 ){
+                println(s"Hello ${n} bottles of beer")
+                n += 1
+            }
+        }
+    }
+
+```
+
+- 基础数据结构：List、Set、Map、Tuple、Stream 以及 Option
+```scala
+    // 创建Map
+    val authorsToAge = Map("Raoul" -> 23, "Mario" -> 40, "Alan" -> 53) 
+    // 创建链表和集合
+    val authors = List("Raoul", "Mario", "Alan") 
+    val numbers = Set(1, 1, 2, 3, 5, 8)
+
+
+    // 使用集合 
+    // _表示占位符，可以根据入参进行类型判断，
+    val fileLines = Source.fromFile("data.txt").getLines.toList() 
+    val linesLongUpper 
+                 = fileLines.par filter(_.length() > 10) 
+                 .map(_.toUpperCase()) 
+
+    // 元组 Tuple 从下表1开始
+    val book = (2014, "Java 8 in Action", "Manning") 
+    val numbers = (42, 1337, 0, 3, 14) 
+
+    // option使用 如果没有入参可以省略函数括号
+    def getCarInsuranceName(person: Option[Person], minAge: Int) = 
+        person.filter(_.getAge() >= minAge) 
+             .flatMap(_.getCar) 
+             .flatMap(_.getInsurance) 
+             .map(_.getName).getOrElse("Unknown") 
+```
+
+> <b>不可修改与不可变的比较</b>Java中提供了多种方法创建不可修改的（unmodifiable）集合。下面的代码中，变量newNumbers是集合Set对象numbers的一个只读视图：
+> 
+>Set<Integer> numbers = new HashSet<>(); 
+>
+>Set<Integer> newNumbers = Collections.unmodifiableSet(numbers); 
+>
+>这意味着你无法通过操作变量newNumbers向其中加入新的元素。不过，不可修改集合仅是对可变集合进行了一层封装。通过直接访问numbers变量，你还是能向其中加入元素。与此相反，不可变（immutable）集合确保了该集合在任何时候都不会发生变化，无论有多少个变量同时指向它。我们在第14章介绍过如何创建一个持久化的数据结构：你需要创建一个不可变数据结构，该数据结构会保存它自身修改之前的版本。任何的修改都会创建一个更新的数据结构。
+
+### 函数
+
+Scala中的函数可以看成为了完成某个任务而组合在一起的指令序列
+
+特性：
+- 函数类型，它是一种语法糖，体现了Java语言中函数描述符的思想
+    ```scala
+        // 这里p的类型： 是传入T类型，返回Boolean类型的函数类型
+        def filter[T](p: (T) => Boolean): List[T] 
+     ```
+- 能够读写非本地变量的匿名函数，而Java中的Lambda表达式无法对非本地变量进行写操作。
+    ```scala
+        // 闭包：不能修改 定义Lambda表达式的函数 中的本地变量值。
+        def main(args: Array[String]) {
+             var count = 0 
+             val inc = () => count+=1 
+             inc() 
+             println(count) 
+             inc() 
+             println(count) 
+        } 
+   ```
+- 对科里化的支持，这意味着你可以将一个接受多个参数的函数拆分成一系列接受部分参数的函数
+    ```scala
+  
+        // 先根据x返回一个函数类型，之后根据y进行计算
+        def multiplyCurry(x :Int)(y : Int) = x * y 
+        val r = multiplyCurry(2)(10) 
+    ```
+
+### 类和trait
+
+#### 类
+
+```scala
+    // 不需要get set
+    class Student(var name: String, var id: Int) 
+    val s = new Student("Raoul", 1) 
+    println(s.name) 
+    s.id = 1337 
+    println(s.id)
+```
+
+#### trait
+
+强化Java8的接口，除了对行为的多继承支持，还允许对状态的多继承。
+
+```scala
+// 如同接口声明
+trait Sized{ 
+     var size : Int = 0 
+     def isEmpty() = size == 0 
+}
+
+// 继承
+class Empty extends Sized 
+println(new Empty().isEmpty())
+ 
+// 动态决定实例继承谁
+class Box 
+val b1 = new Box() with Sized 
+println(b1.isEmpty()) 
+val b2 = new Box() 
+b2.isEmpty()        // 出错，没有继承trait
+```
