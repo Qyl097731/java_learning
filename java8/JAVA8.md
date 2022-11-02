@@ -1403,3 +1403,31 @@ LocalDate date2 = LocalDate.parse(formattedDate, formatter);
 ```
 
 <b>和老的java.util.DateFormat相比较，所有的DateTimeFormatter实例都是线程安全的,能在多个线程间共享这些实例</b>
+
+### 处理不同的时区和历法
+
+时区：时区是按照一定的规则将区域划分成的标准时间相同的区间。每个特定的ZoneId对象都由一个地区ID标识
+```java
+// 获取某个时区指定的规则
+ZoneId romeZone = ZoneId.of("Europe/Rome"); 
+
+//TimeZone 由ZoneId替代
+// 将一个老的时区对象转换为ZoneId：
+ZoneId zoneId = TimeZone.getDefault().toZoneId();
+
+// 为时间点添加时区信息
+LocalDate date = LocalDate.of(2014, Month.MARCH, 18); 
+ZonedDateTime zdt1 = date.atStartOfDay(romeZone); 
+LocalDateTime dateTime = LocalDateTime.of(2014, Month.MARCH, 18, 13, 45); 
+ZonedDateTime zdt2 = dateTime.atZone(romeZone); 
+Instant instant = Instant.now(); 
+ZonedDateTime zdt3 = instant.atZone(romeZone);
+
+// LocalDateTime转换为Instant：
+LocalDateTime dateTime = LocalDateTime.of(2014, Month.MARCH, 18, 13, 45); 
+Instant instantFromDateTime = dateTime.toInstant(romeZone);
+// Instant 得到LocalDateTime对象
+Instant instant = Instant.now(); 
+LocalDateTime timeFromInstant = LocalDateTime.ofInstant(instant, romeZone); 
+```
+
