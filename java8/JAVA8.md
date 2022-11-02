@@ -1614,3 +1614,152 @@ println(b1.isEmpty())
 val b2 = new Box() 
 b2.isEmpty()        // 出错，没有继承trait
 ```
+
+## 附录A
+
+### 注解
+
+- 可以定义重复注解
+- 使用新版Java，你可以为任何类型添加注解
+
+#### 创建重复注解
+
+```java
+// 将注解标记为@Repeatable
+@Repeatable(Authors.class) 
+@interface Author { String name(); } 
+// 提供一个注解的容器
+@interface Authors { 
+ Author[] value(); 
+}
+// 重复注解使用
+@Author(name="Raoul") @Author(name="Mario") @Author(name="Alan") 
+class Book{ }
+```
+
+## 附录B
+
+### 集合
+
+- Map
+
+```java
+Integer count = map.getOrDefault("Aston Martin", 0); 
+
+public String getData(String url){ 
+ return cache.computeIfAbsent(url, this::getData); 
+}
+```
+
+### 并发
+- Arrays类现在支持并发操作；
+- 对ConcurrentHashMap进行讨论。
+
+#### 原子操作
+
+`AtomicLong`,`AtomicInteger`
+
+- getAndUpdate——以原子方式用给定的方法更新当前值，并返回变更之前的值。
+- updateAndGet——以原子方式用给定的方法更新当前值，并返回变更之后的值。 
+- getAndAccumulate——以原子方式用给定的方法对当前及给定的值进行更新，并返回变更之前的值。
+- accumulateAndGet——以原子方式用给定的方法对当前及给定的值进行更新，并返回变更之后的值。
+
+但是多线程的环境中，如果多个线程需要频繁地进行更新操作，所以Java API文档中推荐大家使用新的类LongAdder、LongAccumulator、DoubleAdder以及DoubleAccumulator，
+
+```java
+// 这里都是返回已经完成的结果，如果是多线程，可能结果就是不是最终结果。但是最终保持一致。
+
+// 在多个不同的线程中进行加法运算
+LongAdder adder = new LongAdder(); 
+adder.add(10); 
+// … 
+long sum = adder.sum();
+
+// 在几个不同的线程中累计计算值
+LongAccumulator acc = new LongAccumulator(Long::sum, 0); 
+acc.accumulate(10); 
+// … 
+long result = acc.get();
+```
+
+#### ConcurrentHashMap
+
+ConcurrentHashMap允许并发地进行新增和更新操作，因为它仅对内部数据结构的某些部分上锁.和另一种选择，即同步式的Hashtable比较起来，它具有更高的读写性能
+
+典型情况下，map的条目会被存储在桶中，依据键生成哈希值进行访问。但是，如果大量键返回相同的哈希值，它的查询复杂度为O(n)，这种情况下性能会恶化。在Java 8中，当桶过于臃肿时，它们会被动态地替换为排序树（sorted tree），排序树的查询复杂度为O(log(n))）
+
+尽量使用`mappingCount`而不是`size`
+
+集合视图：提供了一个名为KeySet的新方法，该方法以Set的形式返回ConcurrentHashMap的一个视图（对map的修改会反映在该Set中，反之亦然）。
+
+### Arrays
+
+- parallelSort方法会以并发的方式对指定的数组进行排序
+
+- setAll和parallelSetAll方法可以以顺序的方式也可以用并发的方式，使用提供的函数计算每一个元素的值，对指定数组中的所有元素进行设置。
+
+```java
+int[] evenNumbers = new int[10]; 
+Arrays.setAll(evenNumbers, i -> i * 2); 
+```
+
+- parallelPrefix方法以并发的方式，用用户提供的二进制操作符对给定数组中的每个元素进行累积计算
+```java
+int[] ones = new int[10]; 
+Arrays.fill(ones, 1); 
+Arrays.parallelPrefix(ones, (a, b) -> a + b);
+```
+
+### Number 和 Math
+
+Number:
+- BigInteger 类提供了 byteValueExact 、 shortValueExact 、 intValueExact 和longValueExact，可以将BigInteger类型的值转换为对应的基础类型。不过，如果在转换过程中有信息的丢失，方法会抛出算术异常。
+
+Math类提供了新的方法可以抛出算术异常:
+- 法包括使用int和long参数的addExact、subtractExact、multipleExact、incrementExact、decrementExact和negateExact
+- toIntExact，可以将long值转换为int值
+- 静态方法floorMod、floorDiv和nextDown
+
+### Files
+- Files.list——生成由指定目录中所有条目构成的Stream<Path>。这个列表不是递归包含的。由于流是延迟消费的，处理包含内容非常庞大的目录时，这个方法非常有用。
+- Files.walk——和Files.list有些类似，它也生成包含给定目录中所有条目的Stream<Path>。不过这个列表是递归的，你可以设定递归的深度。注意，该遍历是依照深度优先进行的。
+- Files.find——通过递归地遍历一个目录找到符合条件的条目，并生成一个Stream<Path>对象。
+
+## 附录C
+一次性向流中传递多个Lambda表达式，对每个复制的流应用不同的函数，以并发的方式执行这些操作，可以利用一个通用API，即Spliterator，尤其是它的延迟绑定能力，结合BlockingQueues和Futures
+来实现这一大有裨益的特性。
+
+### 复制流
+
+#### 案例
+
+- StreamForker
+
+其背后的运行过程如下所示：
+<img src="./images/1667396752555.jpg />
+
+
+## 附录D
+Lambda表达式和JVM字节码
+
+
+### 匿名类
+Lambda不会转成匿名类原因如下：
+- 编译器会为每个匿名类生成一个新的.class文件。这些新生成的类文件的文件名通常以ClassName$1这种形式呈现，其中ClassName是匿名类出现的类的名字，紧跟着一个美元符号和一个数字。生成大量的类文件是不利的，因为每个类文件在使用之前都需要加载和验证，这会直接影响应用的启动性能。
+- 每个新的匿名类都会为类或者接口产生一个新的子类型。如果你为了实现一个比较器，使用了一百多个不同的Lambda表达式，这意味着该比较器会有一百多个不同的子类型。这种情况下，JVM的运行时性能调优会变得更加困难。
+
+><br>invokedynamic指令</b>
+>
+>最初被JDK7引入，用于支持运行于JVM上的动态类型语言.
+>
+>`def add(a, b) { a + b }`这里a和b的类型在编译时都未知，有可能随着运行时发生变化。由于这个原因，JVM首次执行invokedynamic调用时，它会查询一个bootstrap
+>方法，该方法实现了依赖语言的逻辑，可以决定选择哪一个方法进行调用.bootstrap方法返回一个链接调用点
+
+
+invokedynamic指令用于延迟Lambda表达式到字节码的转换，最终这一操作被推迟到了运行时.带来了很多好处：
+
+- 没有带来额外的开销，没有额外的字段，也不需要进行静态初始化，而这些如果不使用Lambda，就不会实现。
+- 对无状态非捕获型Lambda，我们可以创建一个Lambda对象的实例，对其进行缓存，之后对同一对象的访问都返回同样的内容。这是一种常见的用例，也是人们在Java 8之前就惯用的方式；比如，以static final变量的方式声明某个比较器实例。
+- 没有额外的性能开销，因为这些转换都是必须的，并且结果也进行了链接，仅在Lambda首次被调用时需要转换。其后所有的调用都能直接跳过这一步，直接调用之前链接的实现。
+
+### 代码生成策略 😣（尚未理解）
