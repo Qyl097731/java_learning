@@ -1431,3 +1431,37 @@ Instant instant = Instant.now();
 LocalDateTime timeFromInstant = LocalDateTime.ofInstant(instant, romeZone); 
 ```
 
+## 函数式思考
+
+### 实现和维护系统
+
+#### 共享的可变数据
+
+容易引起并发问题，且会有较多场景引起副作用的函数效果。如下
+- 除了构造器内的初始化操作，对类中数据结构的任何修改，包括字段的赋值操作（一个典型的例子是setter方法）。
+- 抛出一个异常。
+- 进行输入/输出操作，比如向一个文件写数据。
+
+为了安全的并发，应该考虑不可变对象。
+
+#### 声明式编程
+
+两种形式：
+- 一种专注于如何实现，比如：“首先做这个，紧接着更新那个，然后……”
+```java
+    Transaction mostExpensive = transactions.get(0);
+    if(mostExpensive == null)
+        throw new IllegalArgumentException("Empty list of transactions")
+    for(Transaction t: transactions.subList(1, transactions.size())){
+        if(t.getValue() > mostExpensive.getValue()){
+            mostExpensive = t;
+        }
+    }
+```
+- 另一种方式则更加关注要做什么,你的查询语句现在读起来就像是问题陈述,把最终如何实现的细节留给了函数库
+```java
+Optional<Transaction> mostExpensive = 
+                 transactions.stream() 
+                                .max(comparing(Transaction::getValue));
+```
+
