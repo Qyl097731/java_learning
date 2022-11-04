@@ -1,4 +1,6 @@
-# 《深入剖析Tomcat》
+# 《深入剖析Tomcat》 
+
+源代码已经附上了，这里只记录思想。
 
 ## 一个简单的Web服务器
 
@@ -78,3 +80,44 @@ void destroy();
     在demo1基础上，添加了一个Servlet容器，当HTTP请求不是对静态资源的请求的时候就会分发到servletProcessor实例。
     
     在后续chapter02.demo01基础上添加了一些安全措施，外观模式防止接口对外暴露，其余未变。
+
+## 连接器
+
+Catalina 含有两个重要模块：连接器和容器。
+
+### StringManager
+
+利用单例模式，一个包对应一个StringManager，通过Map存储所有的StringManager。如果传入的包名在Map中还没有相应的StringManager，就会新建该实例。StringManager含有国际化功能，
+会根据服务器的语言环境来选择使用哪个文件。
+
+`getString(String key)`来获取文件中key对应的错误信息，SpringBoot获取配置类似。
+
+### 应用程序
+
+本章应用程序分为：连接器模块、启动模块、核心模块
+
+- 启动模块：Bootstrap类，负责启动应用程序
+- 连接器模块：支持以下类型
+    - 连接器及其支持类
+    - 表示HTTP请求的类及其支持类
+    - 表示HTTP相应的类及其支持类
+    - 外观类
+    - 常量类
+- 核心模块：ServletProcessor类和StaticResourceProcessor类
+
+#### 具体阐释：
+将HttpServer拆分成HttpConnector（等待HTTP请求工作）和HttpProcessor（创建Request和Response工作)
+
+- 连接器
+    - HTTP请求使用HttpRequest类，会作为参数传给Service，必须正确地设置HttpRequest的成员变量，但是连接器不知道service
+会使用哪些变量，为了性能，在一些参数被真正调用前，默认不去解析他们。
+具体这里使用socketInputStream来读取字节流，先readRequestLine()读取首部第一行，之后readHeader
+()获取首部剩下的内容，以键值对返回。
+
+- 处理器
+    - 通过parse来解析传来的HTTP请求行和请求头。但是不会解析全部，懒解析。
+
+总的来说两者都不全部解析参数，都是懒加载。
+
+
+
