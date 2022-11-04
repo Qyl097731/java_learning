@@ -34,7 +34,7 @@
 
 服务器主要是解析请求，响应请求，这里把请求Socket解析成Request，响应体封装成Response，其中HttpServer是服务器。
 
-详见chapter01.demo01
+详见ex01
 
 
 ## 一个简单的Servlet容器
@@ -67,7 +67,7 @@ void destroy();
 
 ### 案例
 
-- chapter02.demo01
+- ex02
 
     servlet仅做如下几件事：
     - 等待HTTP请求
@@ -79,7 +79,7 @@ void destroy();
     
     在demo1基础上，添加了一个Servlet容器，当HTTP请求不是对静态资源的请求的时候就会分发到servletProcessor实例。
     
-    在后续chapter02.demo01基础上添加了一些安全措施，外观模式防止接口对外暴露，其余未变。
+    在后续ex02基础上添加了一些安全措施，外观模式防止接口对外暴露，其余未变。
 
 ## 连接器
 
@@ -118,6 +118,87 @@ Catalina 含有两个重要模块：连接器和容器。
     - 通过parse来解析传来的HTTP请求行和请求头。但是不会解析全部，懒解析。
 
 总的来说两者都不全部解析参数，都是懒加载。
+
+## Tomcat的默认连接器
+
+Tomcat的默认连接器满足以下要求：
+- 实现Connector
+- 实现Request、Response
+
+工作原理：等待HTTP请求，创建Request和Response，调用容器的invoke()方法，将request和response传递给servlet容器。
+`public void invoke(Request request,Response response)`
+
+
+使用了对象池来避免频繁创建对象带来的性能损耗。同时使用字符数组代替字符串。
+
+### HTTP1.1新特性
+
+- 持久连接
+    建立连接，完成一次请求之后保持连接，不会跟之前一样立即关闭
+- 块编码
+    servlet容器可以在接收到一些字节之后就开始发送相应信息，不必等到收到所有信息。HTTP1.1通过transfer-encoding来标识分块发送，XX\r\n 其中XX标识还剩多少数据要传送。
+- 状态码100的使用
+   发送较长请求体之前，发送一个短的试探请求，来查看服务器响应与否。如果拒绝接收，那么较长的请求体也没必要再发了，自然减少了没必要的开销。
+
+### Connector接口
+最终要的四个方法：
+- setContainer() 将服务器与servlet容器关联
+- getContainer() 返回与当前连接器相关联的servlet容器
+- createRequest()为引入的hTTP请求创建request对象
+- createResponse()创建一个response对象
+   
+### HttpConnector类
+
+HttpConnector实现了Connector接口（成为Catalina连接器）、Runnable接口（新开线程运行）、Lifecycle接口（维护每个实现了该接口的每个Catalina组件的生命周期）
+
+#### 创建服务套接字
+通过工厂模式(open)创建服务器套接字
+
+#### 维护HttpProcessor
+
+一HttpConnector对应一个HttpProcessor对象池，这样每个HttpProcessor可以运行在自己的线程中，可以让一个HttpConnector来同时处理多个Http
+请求,同时也避免了每次创建HttpProcessor的操作。HttpProcessor的构造函数会调用HttpConnector来创建Request何Response
+
+#### 提供HTTP请求服务
+
+轮询式阻塞的监听请求，如果请求到来就从对象池中获取一个HttpProcessor,若池空了且当前已经创建的对象已达上限，就直接关闭请求，不进行处理。
+创建成功就通过`assign`方法把socket分发给该`processor`
+
+#### HttpProcessor 类
+
+- `assign()`异步实现，可以HttpProcessor同时处理多个HTTP请求。
+- `process()`负责解析HTTP请求，调用相应的servlet容器的invoke方法。
+
+通过available的信号量、notifyAll()、wait()实现了生产者、消费者的同步。如果存在Socket未处理就等待Processor进行处理，如果没有Socket能处理就等待HttpConnector传入Socket
+
+<img src="./images/1667569354528.jpg />
+
+### 处理请求
+
+着重讲述HttpProcessor的process()
+- 解析连接
+- 解析请求
+- 解析请求头
+
+这里注意设置HttpProcessor缓冲区大小是通过connector来获取的。因为对于connector用户，不应该知道底层怎么实现，所以应该只能设置connector的bufferSize
+大小，底层直接获取该connector来进行设置缓冲区大小。
+
+```java
+   SocketInputStream input = null;
+        OutputStream output = null;
+
+        // Construct and initialize the objects we will need
+        try {
+            input = new SocketInputStream(socket.getInputStream(),
+                                          connector.getBufferSize());
+        } catch (Exception e) {
+            log("process.create", e);
+            ok = false;
+        }
+
+```
+
+
 
 
 
