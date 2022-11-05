@@ -363,3 +363,24 @@ SimpleContext的基础阈，通过映射器获取指定的Wrapper，并向respon
 为了屏蔽子容器的实现，Loader现在注入在当前容器，子容器可以获取父容器的加载器进行使用。
 
 参见SimpleContext，JSP开发过的话，整个很好懂
+
+## 生命周期Lifecycle
+
+Catalina包含很多组件，当Catalina启动的时候，组件也会一起启动，当Catalina关闭的时候，必须所有组件也关闭，如servlet容器关闭时，必须调用调用所有容器中的servlet的destroy方法，但是Session
+会保存到辅助存储器中。这是通过实现Lifecycle接口实现的。
+
+### Lifecycle 接口
+
+允许一个组件包含其他组件，一旦父组件启动，那么子组件都能启动。
+
+### LifecycleSupport
+
+提供了一种简单的方法来触发某个组件的生命周期事件，并对事件监听器进行处理
+
+### 应用程序
+
+所有组件实现了Lifecycle接口，包含一个Context、两个Wrapper、一个Loader、一个映射器
+
+单一启动关闭机制：让最高层级的组件启动\关闭，低层级会一起启动\关闭。
+
+Wrapper分配的时候不会进行启动；Wrapper关闭的时候，会把实例直接回收掉；
