@@ -198,7 +198,168 @@ HttpConnector实现了Connector接口（成为Catalina连接器）、Runnable接
 
 ```
 
+#### 解析连接
 
+看是否使用代理来设置不同端口
+```java
+    private void parseConnection(Socket socket)
+        throws IOException, ServletException {
 
+        if (debug >= 2)
+            log("  parseConnection: address=" + socket.getInetAddress() +
+                ", port=" + connector.getPort());
+        ((HttpRequestImpl) request).setInet(socket.getInetAddress());
+        if (proxyPort != 0)
+            request.setServerPort(proxyPort);
+        else
+            request.setServerPort(serverPort);
+        request.setSocket(socket);
 
+    }
+```
 
+#### 解析请求头
+
+采用字符数组来避免代价高昂的字符串操作,通过readHeader进行读取。
+
+### 简单的Container容器
+
+- SimpleContainer
+
+因为默认连接器会接收到请求之后，会调用Servlet容器的invoke方法，该方法会载入相关servlet类，并调用servlet的service()方法。
+
+- Bootstrap
+
+通过创建连接器和Servlet容器，并向连接器注入该容器，之后进行连接器的初始化和启动，以此来监听请求。
+
+## servlet容器
+
+用来处理请求servlet资源，为客户端填充response对象的模块。
+
+Tomcat含有四种不同层级的容器：
+- Engine
+整个Catalina servlet引擎
+- Host
+表示包含有一个或者多个Context容器的虚拟主机
+- Context
+表示一个Web应用程序，一个Context可以有多个Wrapper
+- Wrapper
+表示一个独立的servlet
+
+每个高层级容器都包含有0或多个低层级子容器。可以通过addChild进行添加，添加的时候会进行类型检查。
+
+容器支持的组件：载入器、记录器、管理器、领域和资源等。
+
+可以通过`server.xml`进行指定使用哪一种容器。这是通过引入容器中的管道（pipeline）和阈（value）的集合实现的。
+
+### 管道任务
+
+旨在说明连接器调用了servlet容器的invoke之后会发生什么事情，并讨论Pipeline、Value、ValueContext、和Contained
+
+管道中包含了Servlet将要调用的任务，一个阈表示一个具体的执行任务，阈的数量是额外添加的阈数量（本来只有一个基础阈）。可以同构server.xml进行动态添加阈。
+
+管道就好像过滤器链，阈就好像过滤器。可以处理传递给他的request和response，基础阈总是最后一个执行。
+
+跟网络编程中Channel、Selector类似，当监听到了请求之后，就会把请求给注册到Selector，之后就Selector慢慢处理。这里的管道就是Selector的职责，负责对阈（任务）的处理。
+
+#### Pipeline接口
+
+建议直接看源码：
+- invoke调用管道中的阈
+- add/removeValue增加/删除某个阈
+- getBasic获取基础阈
+
+#### Value接口
+存储阈信息并真正处理阈
+
+#### ValueContext接口
+
+相当于一个iterator，不断遍历管道中的阈来执行Value（阈）
+
+#### Contained接口
+
+将阈和指定的servlet容器向关联。
+
+### Wrapper接口
+
+表示一个独立的servlet定义，继承自Container接口，负责servlet的init、service、destroy
+
+- load 载入并初始化servlet
+- allocate 分配一个已经初始化的servlet实例
+
+### Context接口
+
+表示一个Web应用程序，一个Context实例可以有一个或者多个Wrapper实例作为子容器。
+
+### Wrapper应用程序
+
+SimpleWrapper实现了Wrapper接口，是最小的servlet容器；包含了一个Pipeline实例，并使用Loader实例来载入类。其中Pipeline包含了一个基础阈和两个额外的阈。（一个Wrapper
+也是一个Pipeline）
+- ClientIPLoggerValve
+- HeaderLoggerValve
+- SimpleWrapperValve
+
+#### SimpleLoader
+
+包含一个ClassLoader，在构造函数中初始化。其中container指向了与该servlet容器相关的类加载器。
+
+#### SimpleWrapper
+
+两个变量：
+- loader：加载servlet的载入器（Simple Class Loader)
+- parent：wrapper的父容器
+
+构造函数中会设置基础阈
+
+#### SimpleWrapperValue类
+
+是一个基础阈，专门用于处理SimpleWrapper类的请求。作为最后需要处理的阈，不需要调用ValueContext的invokeNext方法。
+
+通过调用allocate来获取该Wrapper对应的servlet实例。
+
+#### ClientIpLoggerValue类
+
+该阈用来将客户端的IP地址输出到控制台。跟Spring Security中的职责链模式很像，是一种尾递归模式。
+
+#### HeaderLoggerValue类
+
+输出请求头到控制台。
+
+### Context应用程序
+
+包含了两个Wrapper实例的Context实例来构造Web应用程序，两个Wrapper包装了两个servlet类，有多个wrapper的时候需要一个映射器。映射器来选择合适的子容器处理制定的请求。
+
+servlet容器通过多个映射器来支持不同的协议，一个映射器一个协议，如一个映射器对HTTP协议进行映射、一个映射器对HTTPS协议进行映射。
+
+通过`getContainer`来获取映射器相关联的子servlet容器实例。
+
+一个SimpleContext实例，使用SimpleContextMapper作为映射器，SimpleContextValue作为基础阈，Context容器中添加了两个额外的阈ClientIpLoggerValue
+和HeaderLoggerValue，并包含两个Wrapper作为子容器。
+
+大体流程：
+- 当前容器包含一条管道，先调用管道的invoke方法
+- 该管道中所有阈都会被调用，最后是基础阈的invoke
+- 在基础阈的invoke时，会通过映射器来找子容器，然后调用子容器的invoke方法。
+- 子容器会调用自己管道中阈，基础阈负责载入相关的servlet类，并进行响应。
+
+#### SimpleContextValue
+
+SimpleContext的基础阈，通过映射器获取指定的Wrapper，并向response注入上下文容器（context）
+
+#### SimpleContextMapper
+
+映射器，为基础阈通过路径找子容器
+
+#### SimpleContext
+
+通过请求的URL阈Wrapper的实例名称来决定调用那个wrapper实例。如ModernServlet的实例名为Modern
+
+做过web开发，应该就懂了！我们平时就是通过设置项目的context路径，然后浏览器发送请求的时候，就是项目名+指定的Servlet名来获取指定的服务,而这里可以设置mapping映射。
+
+`public void addServletMapping(String pattern, String name);` 设置映射关系，不然获取不到servlet服务
+`public String findServletMapping(String pattern);`获取请求路径所对应的Wrapper实例（就是最基础的servlet实例来提供服务）
+`map()`返回负责处理请求的Wrapper实例
+
+为了屏蔽子容器的实现，Loader现在注入在当前容器，子容器可以获取父容器的加载器进行使用。
+
+参见SimpleContext，JSP开发过的话，整个很好懂
