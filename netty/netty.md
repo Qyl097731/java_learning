@@ -99,3 +99,59 @@ ServerBootstrap需要两个EventLoopGroup：一个用来监听绑定的应用程
 
 ## 传输
 
+### 传输API
+
+核心是Channel
+
+- ChannelConfig：包含了所有Channel的配置，支持热更新
+- ChannelPipeline：持有出入站数据以及事件的ChannelHandler实例
+- ChannelHandler：
+    - 数据格式转换
+    - 异常通知
+    - 提供Channel变为活动或者非活动的通知
+    - 提供当Channel注册到EventLoop或者从EventLoop注销时的通知
+    - 提供用户自定义事件的通知
+> 拦截过滤器 ChannelPipeline 实现一种常见的设计——拦截过滤器（Intercepting
+>  Filter）。好似UNIX的管道
+
+### 内置的传输
+
+<img src="./images/1667699376244.jpg" />
+
+#### NIO——非阻塞IO
+
+是JDK1.4之后，基于选择器的API。NIO提供了所有IO操作的全异步实现。
+
+选择器背后的基本概念是一个注册表，所有的Channel把自己关心的事情注册到Selector中
+- 新Channel已被接收且已经就绪
+- Channel连接已经完成
+- Channel有已经就绪的可供读取的数据
+- Channel可用于写数据
+
+选择器运行在一个检查状态变化并且对其做出相应响应的线程上，在应用程序对状态的改变做出响应之后，选择器将会被重置，并重复这个过程。
+
+> 零拷贝（zero-copy）目前只有使用NIO或者Epoll传输时才可使用的特性。可以快速高效地将数据从文件系统移动到网络接口，而不需要将其从内核オ间复制到用户空间，其在像FTP或者HTTP
+> 这样的协议中可以显著提升性能。但是，并不是所有的操作都支持这一特性。特别对实现了数据加密或者压缩的文件系统是不可用的——只能传输文件的原始内容。反过来，传输已被加密的文件则不是问题。
+
+#### Epoll——用于Linux的本地非阻塞传输
+
+一个高度可扩展的IO事件通知特性。Netty为Linux提供了一组NIO API，以一种跟自身设计更加一致的方式来使用epoll，更加轻量使用中断，如果运行于Linux，高负载情况下性能由于JDK的NIO。
+
+#### OIO——旧的阻塞IO
+
+通过SO_TIMEOUT这个socket标志，指定等待一个IO操作完成的最大毫秒数，如果没有完成就会捕获这个异常并继续处理循环。在EventLoop下次运行时，继续尝试。
+
+#### 用于JVM内部通信的Local传输
+
+在同一个JVM中运行的客户端和服务器进行异步通信。
+
+#### Embedded传输
+
+将ChannelHandler传入到其他的ChannelHandler内部，可以扩展一个ChannelHandler，又不需要修改其内部代码。
+
+### 传输的用例
+
+<img src="./images/1667714675051.jpg />
+
+
+
