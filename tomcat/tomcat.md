@@ -576,8 +576,33 @@ Session存入数据库，setDriverName、setConnectionURL设置驱动和连接UR
 
 <b>servlet获取session的时候，其实是通过父容器中的SessionManager来获取的</b>
 
+## 安全性
 
+只有授权用户在提供了正确的用户名和密码之后才能查看他们，servlet通过web.xml(配置部署描述器)进行访问控制，通过将验证器阈添加到管道pipeline中，请求到来后都先经过authenticate()才能访问。
 
+### 领域
 
+对用户进行身份验证的组件，与Context容器相关联，通过setRealm进行设置。
 
+有效用户名和密码默认存储在tomcat-user.xml中
+
+<img src="./images/1667828369615.jpg />
+
+### GenericPrincipal
+
+始终与一个领域对象相关联，必须有一个用户名和密码对，该用户名对应的角色是可选的，通过hasRole(String role)来查看是否有指定角色。
+
+### LoginConfig
+
+登陆配置存储了领域对象的名字和身份验证方法名。通过web.xml中的login-config元素的配置来创建LoginConfig对象。
+
+### Authenticator接口
+
+作为一个标记，其他组件可以通过instanceof关键字检查某个组件是不是一个验证器。
+
+### 安装验证器阈
+
+web.xml中，login-config元素仅能出现一次。login-config元素包含一个auth-method元素指定身份认证方法；即一个Context仅有一个LoginConfig实例和利用一个验证了的实现。
+
+<img src="./images/1667827068191.jpg />
 
