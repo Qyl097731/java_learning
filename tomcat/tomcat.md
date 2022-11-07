@@ -423,6 +423,86 @@ Wrapper分配的时候不会进行启动；Wrapper关闭的时候，会把实例
         }
 ```
 
+## 载入器
+
+一般性自定义载入器的原因：
+- 限制载入器所能访问的范围，不应该能够访问所有的类
+- 提供自动重载功能，当classes、lib目录下的类发生变化时，Web程序要重新载入这些类。
+
+Tomcat自定义类载入器的原因
+- 在载入器中指定某些规则
+- 缓存已经载入的类
+- 实现类的预载入，方便使用。
+应用程序只能引用WEB-INF/classes目录以及子目录下的类，同时只能访问WEB-INF/lib目录下的库。
+
+仓库：载入器从哪里加载类
+资源：类载入器中的DirContext，上下文文件根路径。
+
+### Java的类加载器
+
+三种类加载器：
+- 引导类载入器：载入所有的核心类。
+- 扩展类载入器：载入标准扩展目录中的类，加载一些扩展目录中的JAR，加速开发
+- 系统类载入器：搜索在环境变量CLASSPATH中指明的路径和JVR文件。
+三者是继承关系，引导类载入器位于最上层，系统类载入器位于最下层。
+
+## Loader接口
+
+WEB-INF/classes 和 WEB-INF/lib目录作为仓库添加到载入器中.
+
+- addRepository()添加新仓库
+- findRepositories返回仓库数组对象
+
+Tomcat的载入器和Context级别的servlet容器相关联，Context容器中的一个或者多个类被修改，能够对类自动重载，而不需要重启Tomcat。载入器自身需要Context的reload来进行重载。
+
+默认StandardContext是禁用自动重载，需要在server.xml中进行配置
+
+<img src="./images/1667724851128.jpg />
+
+可以通过`setDelegate`设置是否委托父类载入器。
+
+Tomcat的类载入器继承自URLClassLoader
+
+### WebappLoader类
+
+Web应用程序的载入器，实现了Lifecycle接口，可以由其相关联的容器来启动，同时还实现了Runnable接口，可以指定线程调用modified方法。
+如果是true就会通知关联的Context类实例，由该容器进行类重新载入。
+
+一旦start，会执行如下任务：
+- 创建一个载入器
+- 设置仓库
+- 设置类路径
+- 设置访问权限
+- 启动线程来支持自动重载
+
+#### 设置仓库
+
+将WEB-INF/classes目录传入倒类加载器的addRepository方法中，而WEB-INF/lib传入setJarPath中，这样可以从classes目录中和部署的lib目录载入相关类。
+
+#### 设置新线程重新载入
+
+通过新线程定期检查modified，如果是true，就通知相关容器进行载入。而Context容器会创建ContextNotifier在新线程进行载入。而Context容器继续监听是否还有modified为true之后发来的通知。
+
+WebappLoader定期检查通知Context容器，Context通知Notifier进行更新
+
+### WebappClassLoader
+
+通过缓存已加载类来提升性能，同时某些特殊包或者子包中的类不允许载入。
+
+#### 缓存类
+
+通过Vector来把已经从classes、lib中加载的类作为ResourceEntry缓存起来，会保存其代表的class文件的字节流
+
+#### 载入类
+
+- 检查自身缓存、上层缓存
+- 查看是否允许加载该类
+- 查看是否能通过委托，让父类加载
+- 从当前仓库载入类，查看是否能通过父类进行载入，若不存在父类，通过系统类加载器加载。
+- 未找到，抛异常
+
+
+
 
 
 
