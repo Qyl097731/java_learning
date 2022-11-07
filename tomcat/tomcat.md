@@ -501,6 +501,81 @@ WebappLoader定期检查通知Context容器，Context通知Notifier进行更新
 - 从当前仓库载入类，查看是否能通过父类进行载入，若不存在父类，通过系统类加载器加载。
 - 未找到，抛异常
 
+## Session 管理
+
+Manager：Session管理器，通过该管理器来实现管理Session，且必须与Context容器相关联。
+
+一般将Session存在内存中，当然也可以持久化。
+
+### Session对象
+
+#### Session接口
+
+Session对象存在于Session管理器中，而与Manager相关联的Context容器内，该Session对象具有唯一标识符。Manager会判断Session是否过期。
+
+#### StandardSession类
+
+实现了Session和HttpSession接口，构造函数传入Manager，使得Session拥有Manager。getSession会返回一个经过包装的Session实例
+
+#### StandardSessionFacade
+
+将Session变成外观类之后传出倒servlet实例，隐藏了实现细节。
+
+### Manager
+
+StandardManager:当Catalina运行时，Manager将Session存在内存中；Catalina关闭时，将Session放入文件中，之后重新启动Catalina时，会直接将Session对象从文件中加载回内存。
+
+如果可以持久化：load()将存储介质中的Session对象重新载入到内存中，unload()将内存中的Session对象存入指定介质；
+
+
+#### StandardManager
+
+当stop的时候，会调用unload，将Session序列化到CATALINA_HOME指定的work目录下的SESSION.ser文件中。
+
+同时实现了Runnable，新开线程处理已经过期的Session。
+
+#### PersistentManagerBase
+
+持久化Session管理器的父类，持有一个store的引用。
+
+- 换出
+
+超过了maxActiveSessions指定的上限，或者该Session限制了过长时间，才会换出。既能换出到内存，也能换出到存储器。查找一般都是先内存后存储器。
+
+- 备份
+
+空闲时间超过限制的Session进行备份。
+
+#### PersistentManager
+
+继承自PersistentManagerBase 新增了两个属性
+
+#### DistributedManager
+
+用于集群环境中，一台Tomcat服务器表示一个节点，集群环境中，必须使用DistributedManager作为Session管理器，来支持Session复制。
+
+为了Session复制，会通过DistributedManager项其他节点发送消息。
+
+实现了Runnable接口，通过新建的线程来检查session对象是否过期并从其他节点上接收消息
+
+### 存储器
+
+Session管理器为Session提供的持久化存储器的一个组件，即Store
+
+#### StoreBase
+
+周期性检查Session，移除过期的Session，在Tomcat5 改用backgroundProcess周期性调用processExpires
+
+#### FileStore
+
+将Session对象存储到某个.session的临时文件中，可以修改存放.session的临时目录。
+
+#### JDBCStore 
+
+Session存入数据库，setDriverName、setConnectionURL设置驱动和连接URL。
+
+<b>servlet获取session的时候，其实是通过父容器中的SessionManager来获取的</b>
+
 
 
 
