@@ -816,6 +816,52 @@ StandardWrapperValve 的invoke方法：
 基础阈（StandardWrapperValve）的invoke创建ApplicationFilterChain实例，调用其doFilter方法，该方法会通过调用过滤器链中的具体过滤器的doFilter
 ()。当调用了最后一个过滤器，就会调用servlet的service方法。
 
+## StandardContext 类
+
+### StandardContext 配置
+
+- available属性来设置StandardContext对象是否可用。StandardContext的start()正确执行，表明该对象正确配置。正确配置才能读取位于%CATALINA_HOME%/conf下的web.xml
+文件，将文件中的配置应用于tomcat的应用程序。
+- configured属性表示 StandardContext 实例是否被正确设置。start时触发生命周期事件，配置成功就会将configured设置为true，不然无法启动。
+
+#### 构造函数
+
+向 StandardContext 设置基础阈，之后通过该基础阈从连接其中接收每个HTTP请求。
+
+#### 启动StandardContext实例
+
+start()方法初始化StandardContext对象，用生命周期监听器配置StandardContext，配置成功将configured设置为true，最后设置available设置为true
+，表示子容器和组件都正确启动，能提供HTTP请求的服务了。
+
+<img src="./images/1667921796008.jpg />
+
+#### invoke方法
+
+通过相关联的连接器调用，或者如果StandardContext时Host容器的子容器，就有Host实例的invoke调用。需要等待重载完成
+
+### StandardContextMapper类
+
+对于每个HTTP请求，都通过StandardContext的管道中的基础阈的invoke来处理，该方法首先会获取HTTP请求的Wrapper，需要借助该Mapper映射器。
+
+每次都会根据HTTP请求的类型获取特定的mapper，然后再调用map来获取request对应的Wrapper
+
+map方法会首先解析出请求路径中的相对路径:先精确匹配，后模糊匹配。
+
+Tomcat5之后直接通过request对象各种获取适合的wrapper实例。
+
+### 对重载的支持
+
+如果开启了重载（reloadable），那么web.xml或者WEB-INF/classes目录下的文件被重新编译后，应用程序就会重载。
+
+通过容器和应用加载器绑定，之后就能启动线程来持续检查是否有文件更新。
+
+reloadable和容器是否允许重载有关，由容器决定。
+
+### backgroundProcess 方法
+
+Context容器的其他组件的运行都是通过其他线程在后台进行处理的。为了节省资源，tomcat5所有的后台处理共享一个线程。若某个组件需要周期性的执行操作，直接把代码放入backgroundProcess即可。。
+
+通过ContainerBase的start创建线程来执行该方法。
 
 
 
