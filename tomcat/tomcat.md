@@ -606,3 +606,219 @@ web.xml中，login-config元素仅能出现一次。login-config元素包含一�
 
 <img src="./images/1667827068191.jpg />
 
+## StandardWrapper
+
+处理HTTP请求的过程：
+- 连接器创建request和response对象
+- 连接器调用StandardContext的invoke
+- context容器调用管道对象的invoke，管道对象调用StandardContextValue的invoke
+- StandardContextValue的invoke获取Wrapper来处理HTTP请求，调用wrapper的invoke方法
+- wrapper调用管道对象的invoke,分为基础阈和普通阈
+- allocate获取servlet实例，调用load()方法获取servlet类，并进行初始化init
+- StandardWrapperValve掉哦那个servlet的service
+
+### SingleThreadModel
+
+保证servlet实例只处理一个请求，但是仍旧会因资源共享而产生同步问题
+
+### StandardWrapper
+
+载入servlet类并进行实例化，通过标准阈（StandardWrapperValve）来调用servlet的service方法
+
+#### 分配servlet
+standardWrapperValve 的invoke调用Wrapper的allocate进行实例化
+singleThreadModel 默认的初始为false，如果存在servlet进count++，如果count为0就创建再count++;
+
+#### 载入servlet
+
+检查是不是singleThreadModel，如果不是且servlet已经加载过了，就直接返回。
+
+如果是singleThreadModel或者servlet未被加载过，那么loadServlet进行加载（再加载前，会先检查请求的servlet是不是JSP页面，loadServlet会返回JSP请求路径所代表的servlet类）。
+
+```java
+    String actualClass = servletClass;
+    if ((actualClass == null) && (jspFile != null)) {
+        Wrapper jspWrapper = (Wrapper)
+            ((Context) getParent()).findChild(Constants.JSP_SERVLET_NAME);
+        if (jspWrapper != null)
+            actualClass = jspWrapper.getServletClass();
+    }
+```
+
+如果不存在请求的servlet类就会加载默认 servletclass 类，但是如果之前没有设置servletclass就会抛出异常。
+
+```java
+    if (actualClass == null) {
+        unavailable(null);
+        throw new ServletException
+            (sm.getString("standardWrapper.notClass", getName()));
+    }
+```
+
+解析完类名，获取载入器
+```java
+    Loader loader = getLoader();
+    if (loader == null) {
+        unavailable(null);
+        throw new ServletException
+            (sm.getString("standardWrapper.missingLoader", getName()));
+    }
+```
+
+通过载入器获取类载入器
+```java
+    ClassLoader classLoader = loader.getClassLoader();
+```
+
+加载之后判断是不是特殊的类，类载入器特殊化。
+```java
+if (isContainerProvidedServlet(actualClass)) {
+                classLoader = this.getClass().getClassLoader();
+                log(sm.getString
+                      ("standardWrapper.containerServlet", getName()));
+            }
+```
+
+载入servlet类
+```java
+Class classClass = null;
+try {
+    if (classLoader != null) {
+        System.out.println("Using classLoader.loadClass");
+        classClass = classLoader.loadClass(actualClass);
+    } else {
+        System.out.println("Using forName");
+        classClass = Class.forName(actualClass);
+    }
+} catch (ClassNotFoundException e) {
+    unavailable(null);
+    throw new ServletException
+        (sm.getString("standardWrapper.missingClass", actualClass),
+         e);
+}
+```
+
+实例化servlet类
+```java
+try {
+    servlet = (Servlet) classClass.newInstance();
+} catch (ClassCastException e) {
+    unavailable(null);
+    // Restore the context ClassLoader
+    throw new ServletException
+        (sm.getString("standardWrapper.notServlet", actualClass), e);
+} catch (Throwable e) {
+    unavailable(null);
+    // Restore the context ClassLoader
+    throw new ServletException
+        (sm.getString("standardWrapper.instantiate", actualClass), e);
+}
+```
+
+载入方法前检查，检查该servlet是否允许载入
+```java
+// Check if loading the servlet in this web application should be
+// allowed
+if (!isServletAllowed(servlet)) {
+    throw new SecurityException
+        (sm.getString("standardWrapper.privilegedServlet",
+                      actualClass));
+}
+```
+
+查看是否能访问底层的Catalina功能，从而设置ContainerServlet，即继续设置子容器
+```java
+if ((servlet instanceof ContainerServlet) &&
+                isContainerProvidedServlet(actualClass)) {
+System.out.println("calling setWrapper");                  
+                ((ContainerServlet) servlet).setWrapper(this);
+System.out.println("after calling setWrapper");                  
+            }
+```
+
+如果被请求的是JSP页面，就调用servlet的service方法。
+```java
+if ((loadOnStartup > 0) && (jspFile != null)) {
+    // Invoking jspInit
+    HttpRequestBase req = new HttpRequestBase();
+    HttpResponseBase res = new HttpResponseBase();
+    req.setServletPath(jspFile);
+    req.setQueryString("jsp_precompile=true");
+    servlet.service(req, res);
+}
+```
+
+触发AFTER_INIT_EVENT事件
+```java
+instanceSupport.fireInstanceEvent(InstanceEvent.AFTER_INIT_EVENT,
+```
+
+如果是STM就添加到servlet实例池中
+```java
+ singleThreadModel = servlet instanceof SingleThreadModel;
+    if (singleThreadModel) {
+        if (instancePool == null)
+            instancePool = new Stack();
+    }
+    fireContainerEvent("load", this);
+```
+
+记录错误日志
+```java
+finally {
+    String log = SystemLogHandler.stopCapture();
+    if (log != null && log.length() > 0) {
+        if (getServletContext() != null) {
+            getServletContext().log(log);
+        } else {
+            out.println(log);
+        }
+    }
+}
+```
+
+返回servlet实例
+```java
+return servlet;
+```
+
+#### ServletConfig对象
+loadServlet载入servlet并进行init方法的时候，需要向StandardWrapper传入ServletConfig实例。
+- getServletContext()可以获取父容器
+- getServletName()获取servlet名
+- getInitParameter()
+- getInitParameterNames()
+
+### StandardWrapperFacade
+
+传入init方法前将自己包装成 StandardWrapperFacade 再传入。其中StandardWrapperFacade中保存了对原始的StandardWrapper的引用
+
+### StandardWrapperValve
+
+- 执行与servlet相关联的全部过滤器
+- 调用servlet实例的service方法
+
+StandardWrapperValve 的invoke方法：
+- allocate获取servlet
+- 创建过滤器链
+- 进行过滤doFilter（包括调用service方法）
+- deallocate方法，若servlet不再使用，就调用wrapper的unload
+
+### FilterDef类
+
+过滤器定义类
+
+### ApplicationFilterConfig类
+
+用于管理Web应用程序首次启动时创建的所有的过滤器实例。通过context对象和FilterDef对象进行初始化。其中前者表示Web应用程序，后者表示过滤器定义。
+
+### ApplicationFilterChain 类
+基础阈（StandardWrapperValve）的invoke创建ApplicationFilterChain实例，调用其doFilter方法，该方法会通过调用过滤器链中的具体过滤器的doFilter
+()。当调用了最后一个过滤器，就会调用servlet的service方法。
+
+
+
+
+
+
+
