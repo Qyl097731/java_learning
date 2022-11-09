@@ -863,6 +863,25 @@ Context容器的其他组件的运行都是通过其他线程在后台进行处�
 
 通过ContainerBase的start创建线程来执行该方法。
 
+## Host和Engine
+
+当同一个Tomcat部署多个Context容器，才需要Host。但是实际部署中，总会使用一个Host容器，因为Context实例如果使用 ContextConfig 对象进行配置的时候，ContextConfig需要知道web.xml
+，必须要通过Host。
+
+Engine容器是最顶层容器，可以包含Host或者Context子容器。
+
+### StandardHost
+实现了Host和Deployer接口
+
+初始化的时候添加基础阈。start的时候添加ErrorReportvalve和ErrorDispatcherValve。
+
+每当引入Http请求，都会调用invoke，之后调用基础阈的invoke，通过基础阈来调用StandardHost的map获取context进行处理。
+
+总的来说就是通过Host进行域名解析。
+
+### Engine接口
+
+Engine容器可以设置一个Host容器或者一个默认的Context容器，可以与一个服务实例关联
 
 
 
