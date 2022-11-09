@@ -883,6 +883,65 @@ Engine容器是最顶层容器，可以包含Host或者Context子容器。
 
 Engine容器可以设置一个Host容器或者一个默认的Context容器，可以与一个服务实例关联
 
+## 服务器组件和服务组件
+
+### 服务器组件
+
+表示整个Catalina的servlet引擎，囊括了所有组件。用来启动和关闭系统。启动之后就无限期等待关闭命令。通过服务组件来包含其他所有组件（如连接器组件和容器组件）
+
+### StandardServer
+
+await轮询阻塞接收关闭请求
+
+start启动多有的服务组件
+
+initialize初始化素有的服务组件
+
+### Service接口
+
+服务组件可以添加servlet容器和连接器实例，所有添加到service组件中的连接器都会与该servlet容器相关联。
+
+### StandardService
+
+start方法启动连接器和所有servlet容器
+
+### Stopper
+
+优雅关闭Catalina服务器，所有生命周期组建的stop都能调用。
+
+## Digester库
+
+前面所有章节都是手动在BootStrap中进行设置组件，每次调整都需要重新编译Bootstrap类。
+
+通过server.xml进行配置，是的每个xml元素转换成Java对象，可以用于设置Java对象属性，即可以通过server.xml来修改Tomcat配置。
+
+该Digester就是来解析XML文档的。通过相Digester中添加Rule对象来指定更多的解析规则。
+
+begin()会创建响应的Rule实例存入栈中，end()弹出rule
+
+
+### Rule
+
+xml解析规则，Digester包含了Rule的集合。digester进行规则配置（如addObjectCreate)的时候，实际是委托Rule进行规则与Digester进行绑定配置的。
+
+### RuleSet
+
+代码更简介，隐藏了具体实现，通过digester.addRuleSet（RuleSet ruleset） 进行设置，而不用显示的(如addObjectCreate)进行规则添加。
+
+RuleSet内部会进行指定的规则配置。
+
+### ContextConfig
+
+StandardContext必须有监听器，而监听器是ContextConfig的一个实例。会安装指定验证阈和许可阈到管道对象中。还可以读取和解析默认的web.xml文件和应用程序自定的web.xml文件，并转换成Java
+对象。默认web.xml存放于CATALINA_HOME的conf目录下。
+
+应用程序的web.xml存在WEB-INF下。
+
+即使web.xml都不存在也能执行ContextConfig。
+
+ContextConfig会对START_EVENT和STOP_EVENT事件进行响应(start(),stop())。其中start加载两个web.xml的内容。
+
+createWebDigester方法会addRuleSet添加解析XML的规则。
 
 
 
