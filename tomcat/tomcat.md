@@ -952,11 +952,111 @@ Java虚拟机对两类事件进行响应:
 - 用户突然强制虚拟机中断运行，如Ctrl+c
 
 执行关闭的时候：
-- 首先启动所有已经注册的关闭钩子（先前向当前运行时注册过的线程），所有钩子并发执行，知道结束。
+- 首先启动所有已经注册的关闭钩子（先前向当前运行时注册过的线程），所有钩子并发执行，直到结束。
 - 虚拟机调用没有被调用过的终结器
 
+## 启动Tomcat
 
+主要介绍startup包下的Catalina和Bootstrap类，前者用于解析Tomcat配置文件：server.xml文件，后者是入口点，负责创建Catalina实例。并调用process方法。
 
+### Catalina类
 
+启动类，是一个Digester对象，用于解析%CATALINA_HOME%/conf目录下的server.xml文件，来配置Tomcat。
 
+Catalina封装了Server对象，拥有一个Service对象，该服务对象包含一个Servlet容器和多个连接器。可以使用Catalina类来启动/关闭Server对象
 
+一般情况下可以通过使用Bootstrap实例化Catalina调用process来运行Tomcat。
+
+process方法设置了home和base值，默认都是user.dir（用户的工作目录）
+
+#### start
+
+process中调用start来创建一个Digester实例来解析server.xml。同时start方法会调用Digester的push方法将Catalina对象传入作为参数。解析server.xml之后，会使变量server
+引用一个Server对象，调用该Server的initialize和start方法，最后Catalina调用await新建线程等待被关闭。
+
+#### stop
+
+stop创建Digester实例，然后将Catalina对象压入Digester的内部栈，使用Digester对象来解析配置文件，通过正在运行的Server对象来发送关闭命令，来关闭server对象。
+
+#### 启动Digester对象
+
+createStartDigester 创建Digester实例，并为其添加规则。
+
+```java
+    // 创建Server实例，如果该server有className的属性，那么className的属性值就是该类的名称 类似Spring @Service("xxxService")
+    // Configure the actions we will be using
+    digester.addObjectCreate("Server",
+                             "org.apache.catalina.core.StandardServer",
+                             "className");
+    // 指明要对Server对象设置属性值
+    digester.addSetProperties("Server");
+    // 将Server对象押入到Digester对象的内部栈中，因为调用的Digester的createStartDigester之前就已经将Catalina push进栈了，
+    // 所以addSetNext就调用digester的setServer将Server实例存入digester
+    digester.addSetNext("Server",
+                        "setServer",
+                        "org.apache.catalina.Server");
+```
+
+#### 关闭Digester对象
+
+只对xml的根元素Server感兴趣，解析之后就进行返回。
+
+### Bootstrap类
+
+1.设置home和base的路径.如果没有设置就用home，home没设置会返回用户工作目录
+```java
+    // Configure catalina.base from catalina.home if not yet set
+    if (System.getProperty("catalina.base") == null)
+        System.setProperty("catalina.base", getCatalinaHome());
+```
+2.同时有三个不同目的的类加载器，为了防止应用程序中类（servlet和Web应用程序中的其他辅助类）使用WEB-INF/classes 目录 和 WEB-INFO/lib
+目录之外的类。部署到%CATALINA_HME%/common/lib下的jar文件也可以使用。
+```java
+    ClassLoader commonLoader = null;
+    ClassLoader catalinaLoader = null;
+    ClassLoader sharedLoader = null;
+```
+
+- commonLoader负责载入%CATALINA_HOME%/common/classes、%CATALINA_HOME%/common/endorsed、%CATALINA_HOME%/common/lib下的Java类
+- catalinaLoader负责载入servlet类，%CATALINA_HOME%/servlet/classes、%CATALINA_HOME%/servlet/endorsed、%CATALINA_HOME%/servlet
+/lib下的Java类、以及所有commonLoader可以访问的Java类
+- sharedLoader 可以载入%CATALINA_HOME%/shared/classes和%CATALINA_HOME%/shared/lib以及commonLoader可以加载的所有类，Web应用程序中与Context
+容器相关联的 每个类载入器的父类载入器都是 sharedLoader
+
+3.创建完加载器之后，创建Catalina实例，同时将sharedLoader作为该实例的父类加载器。
+
+4.最后通过Catalina来启动Tomcat
+
+### 在Windows上运行Tomcat
+
+- .bat：批处理文件
+- rem：用于注释，解释器不会执行以rem命令开始的行
+- pause：暂停正在执行的批处理文件，并提示用户按键之后继续执行
+- echo:用于在中断显示一段文本
+    - echo %os%：显示操作系统名字
+    - echo off：防止将批处理文件中的具体命令输出，只输出执行结果
+    - @echo off：在echo off的基础上将命令本身的隐藏
+- set：设置用户定义或命名的环境变量。暂时存储在内存中，命令执行完就销毁。
+    ```bash
+        set THE_KING=Elvis
+        echo %THE_KING%   
+    ```
+- label:使用冒号设置标签，可以作为goto的跳转位置
+    `:end`设置名称为end的标签
+- goto：强制批处理文件跳转到指定位置执行
+    ```bash
+        echo Start
+        goto end
+        echo I can guarantee this line will not be executed
+        :end
+        echo End
+        pause
+    ```
+- if:
+    - 测试变量的值
+    - 测试文件是否存在
+    - 测试错误值
+- exist：测试文件是否存在
+- 接收参数：通过%来传递参数 %1 表示第一个参数，%2表示第二个参数；
+    - `echo %1` 就会打印出命令行中第一个传入的参数
+- 
