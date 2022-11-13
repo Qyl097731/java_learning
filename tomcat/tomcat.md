@@ -1175,6 +1175,63 @@ install方法进行安装
 
 通过StandardHostDeployer的start来启动Context实例,其实就是启动host
 
+## Manager 应用程序的servlet类
+
+Manager用来管理已经部署的Web应用程序，随Tomcat一起启动，会通过manager.xml完成部署
+
+### 使用Manager应用程序
+
+作为WEB-INF/lib目录下的一个JAR文件部署的，通过描述符文件进行部署,指定了上下文路径/manager
+```xml
+
+<Context path="/manager" docBase="../server/webapps/manager"
+        debug="0" privileged="true">
+
+  <!-- Link to the user database we will get roles from -->
+  <ResourceLink name="users" global="UserDatabase"
+                type="org.apache.catalina.UserDatabase"/>
+
+</Context>
+```
+指明了访问路径/manager 即 localhost:8080/manager/xxxx
+
+同时指明了security-constraint来对所有的请求进行校验，之后manager角色的用户才能访问manager，同时需要Basic验证拥有manger角色的用户的张皓淼吗，
+只有通过验证才能访问manager资源（需要在%CATALINA_HOME%/conf的tomcat-users.xml添加用户、角色）
+<img src="./images/1668353903699.jpg />
+
+### Containerservlet接口
+
+实现了该接口的servlet类可以访问表示该servlet实例的StandardWrapper对象，通过该wrapper访问当前web应用程序的Context实例，以及Context实例内的部署器（StandardHost
+等）。其中ManagerServlet就实现了ContainerServlet接口
+
+### 初始化 ManagerServlet
+建立与StandardServlet的关系，后面可以对其进行引用，从而访问Web资源
+```java
+if ((servlet instanceof ContainerServlet) &&
+                isContainerProvidedServlet(actualClass)) {
+System.out.println("calling setWrapper");                  
+                ((ContainerServlet) servlet).setWrapper(this);
+System.out.println("after calling setWrapper");                  
+            }
+```
+其中isContainerProvidedServlet会判断时不是ManagerServlet或者是实现了ContainerServlet的了，如果是就返回true
+```java
+        if (classname.startsWith("org.apache.catalina.")) {
+            return (true);
+        }
+        try {
+            Class clazz =
+                this.getClass().getClassLoader().loadClass(classname);
+            return (ContainerServlet.class.isAssignableFrom(clazz));
+        } catch (Throwable t) {
+            return (false);
+        }
+```
+xxx.class.isAssignableFrom(Class clazz) 如果xxx所表示的类和clazz表示的类都表示相同的接口或者是clazz的父类、父接口就会返回true
 
 
 
+## 附录
+
+- 描述符文件: ****.xml
+- 通过将变化无限往下压，来减小变化带来的影响范围
