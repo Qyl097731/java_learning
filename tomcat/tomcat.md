@@ -1067,4 +1067,114 @@ createStartDigester 创建Digester实例，并为其添加规则。
     - `start "Title" echo hello`
     <img src="./images/1668255537904.jpg />
     
-    
+## 部署器
+
+使用Web应用程序，都需要将该应用程序的Context实例部署到Host中，可以通过WAR部署或者复制Web应用程序到Tomcat的webapp下。这些应用程序，可以包含在描述符文件（XML格式）中，包含该Context实例的配置信息。
+
+tomcat中使用了manager和admin来管理Tomcat和部署在Tomcat中的Web应用程序。
+
+部署器是Deployer接口的实例，来创建StandardContext实例，并将实例添加到Host实例中，这样子就能简化启动，父容器启动，子容器跟着启动。
+
+### 部署Web应用程序
+
+关键在于StandardHost对HostConfig类型的引用，通过StandardHost实例start触发START事件，其中HostConfig实例对事件进行响应，并逐步部署Web应用程序。
+
+Catalina启动时，Digester解析server.xml进行配置时就会来设置HostRuleSet规则，这其中就会让HostConfig监听StandardConfig，对之后的事件进行处理
+
+```java
+/**
+ * Process a "start" event for this Host.
+ */
+protected void start() {
+
+    if (debug >= 1)
+        log(sm.getString("hostConfig.start"));
+
+    if (host.getAutoDeploy()) {
+        deployApps();
+    }
+
+    if (isLiveDeploy()) {
+        threadStart();
+    }
+}
+```
+
+```java
+    protected void deployApps() {
+
+        if (!(host instanceof Deployer))
+            return;
+        if (debug >= 1)
+            log(sm.getString("hostConfig.deploying"));
+        // 默认是webapps的值
+        File appBase = appBase();
+        if (!appBase.exists() || !appBase.isDirectory())
+            return;
+        // 将所有的webapp下的目录都视作Web应用进行部署，包括所有War和描述符文件
+        String files[] = appBase.list();
+        // 将%CATALINA_HOME%/webapps下的XML文件进行部署
+        deployDescriptors(appBase, files);
+        // 将%CATALINA_HOME%/webapps 下的WAR文件进行部署
+        deployWARs(appBase, files);
+        // 部署目录，也可以直接将Web应用程序的整个目录复制到%CATALINA_HOME%/webapps目录下来完成Web应用程序的部署
+        deployDirectories(appBase, files);
+    }
+```
+
+- deployDescriptors其实就是部署所有Web应用根路径
+- deployWARs其实就是部署通过WAR包部署应用所提供的服务（具体的请求路径）
+- deployDirectories其实就是部署通过WEB-INF下的应用所提供的服务（具体的请求路径）
+
+
+#### 动态部署
+
+如果liveDeploy为true时，start时会启动一个新线程来定期检查是否有新的应用要部署或者已经部署的web应用的web.xml是否有修改。
+
+### Deploy接口
+
+StandardHost也是一个不失其，同时也是一个容器，那么Web应用可以部署到其中或者消除Web应用
+
+### StandardHostDeployer
+
+帮助Web应用程序部署到StandardHost实例，由StandardHost对象调用，
+```java
+    public StandardHostDeployer(StandardHost host) {
+
+        super();
+        this.host = host;
+
+    }
+```
+
+#### 安装一个描述符
+install方法进行安装
+
+```java
+  // Install the new web application
+        this.context = null;
+        this.overrideDocBase = docBase;
+        InputStream stream = null;
+        try {
+            stream = config.openStream();
+            Digester digester = createDigester();
+            digester.setDebug(host.getDebug());
+            digester.clear();
+            digester.push(this);
+            digester.parse(stream);
+            stream.close();
+            stream = null;
+        } catch (Exception e) {
+```
+
+#### 安装一个War包
+
+通过反射来进行install
+
+#### 启动Context实例
+
+通过StandardHostDeployer的start来启动Context实例,其实就是启动host
+
+
+
+
