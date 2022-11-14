@@ -1229,8 +1229,6 @@ System.out.println("after calling setWrapper");
 ```
 xxx.class.isAssignableFrom(Class clazz) 如果xxx所表示的类和clazz表示的类都表示相同的接口或者是clazz的父类、父接口就会返回true
 
-
-
 ## 附录
 
 - 描述符文件: ****.xml
