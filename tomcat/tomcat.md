@@ -1229,7 +1229,262 @@ System.out.println("after calling setWrapper");
 ```
 xxx.class.isAssignableFrom(Class clazz) 如果xxx所表示的类和clazz表示的类都表示相同的接口或者是clazz的父类、父接口就会返回true
 
-## 附录
+## 基于JMX管理
 
+Java Management Extensions对tomcat进行管理
+
+Common Modeler库来编写托管bean，托管bean可以管理Catalina中的bean对象。
+
+### JMX简介
+
+比ManagerServlet更为灵活的管理Tomcat，若要让Java对象成为JMX管理的资源，必须创建一个名为Manager Bean的对象，如ConnectorMBean。
+
+MBean提供了Java对象的属性和方法来给管理应用程序使用。
+
+MBean实例化后需要注册到MBean服务器对象中，管理应用程序会通过MBean服务器来访问所有的MBean实例。
+
+就好像Web浏览器通过Context容器来访问Servlet资源。 
+
+JMX分为三个层次：MBean服务器位于代理层，MBean位于设备层，分布式服务器层将来涉及。
+
+代理层封装了创建代理的规范，代理又封装了MBean服务器，以及处理MBean的服务。代理以及所管理的MBean通常在一个虚拟机中。
+
+### JMX API
+
+Java库位于javax.management下
+
+#### MBeanServer
+通过工厂模式进行创建：createMBean
+
+注册的时候传入类和类名，封装成ObjectInstance返回
+```java
+public ObjectInstance registerMBean(Object object, ObjectName name)
+        throws InstanceAlreadyExistsException, MBeanRegistrationException,
+               NotCompliantMBeanException;
+```
+查询的时候通过名字或者MBeans来获取一组MBeans，因为没有限定全域名，可以有多个同名MBean，所以会返回所有注册的同名MBean
+```java
+    public Set<ObjectName> queryNames(ObjectName name, QueryExp query)
+            throws IOException;
+```
+获取到MBeans之后就可以通过MBeansServer进行引用这些实例的属性和方法。
+
+#### ObjectName
+
+通过域名:key1=value1,key2=value2...来唯一标识一个MBean实例。
+<img src="./images/1668390598212.jpg />
+这里就是首先指明类型的域名，通过key=value来限定类型.
+ 
+### 标准MBean
+
+创建过程如下：
+- 创建一个接口，命名规范为:Java类名+MBean后缀，如CarMBean
+- 创建一个实现CarMBean接口的Java类
+- 创建一个代理，必须是包含了MBeanServer实例
+- 为MBean创建ObjectName实例
+- 实例化MBeanServer类
+- 将MBean注册到MBeanServer中
+
+```java
+  public static void main(String[] args) {
+    // 创建代理类，包含对MBeanServer的引用
+    ModelAgent agent = new ModelAgent();
+    MBeanServer mBeanServer = agent.getMBeanServer();
+    Car car = new Car();
+    // 获取MBeanServer的域，作为MBean的域
+    String domain = mBeanServer.getDefaultDomain();
+    ObjectName objectName = agent.createObjectName(domain + ":type=MyCar");
+    String mBeanName = "myMBean";
+    ModelMBean modelMBean = agent.createMBean(objectName, mBeanName);
+    try {
+      mBeanServer.registerMBean(modelMBean, objectName);
+    }
+    catch (Exception e) {
+    }
+    
+    // manage the bean
+    try {
+      Attribute attribute = new Attribute("Color", "green");
+      mBeanServer.setAttribute(objectName, attribute);
+    }
+}
+```
+
+###模板MBean
+
+直接实现ModelMBean或者继承RequiredModelMBean即可，不需要自定义接口。如果不再修改Java类可以使用该模板方式。
+
+MBean实例通过ModelMBeanInfo告诉代理要暴露那些属性方法。在创建好ModelMBeanInfo之后与ModelMBean关联即可
+
+### MBeanInfo和MBeanInfoSupport
+
+MBeanInfoSupport是MBeanInfo的默认实现，构造函数中需要传入暴露给方法的属性和方法。
+
+```java
+  public ModelMBeanInfoSupport(String className,
+            String description,
+            ModelMBeanAttributeInfo[] attributes,
+            ModelMBeanConstructorInfo[] constructors,
+            ModelMBeanOperationInfo[] operations,
+            ModelMBeanNotificationInfo[] notifications) {
+        this(className, description, attributes, constructors,
+                operations, notifications, null);
+    }
+```
+
+```java
+ public ModelMBeanAttributeInfo(String name,
+                                       String type,
+                                       String description,
+                                       boolean isReadable,
+                                       boolean isWritable,
+                                       boolean isIs)
+```
+```java
+ public MBeanOperationInfo(String name,
+                              String description,
+                              MBeanParameterInfo[] signature,
+                              String type,
+                              int impact,
+                              Descriptor descriptor) {
+```
+在createMBean的时候，返回包含了一个MBeanInfoSupport引用的RequiredModelMBean
+
+### Common Modeler
+
+不再需要创建ModelMBeanInfo来指定暴露的接口和方法，而是根据XML文件来指定暴露的属性和方法、MBean类和托管资源的完全限定名。之后直接通过Registry实例进行读取该XML文档并创建MBeanServer
+实例，之后就根据XML文档的内容创建所有的ManagedBean实例，通过ManageBean的createMBean来创建MBean，之后创建ObjectName实例，并与MBean一次注册到MBean服务器。
+
+#### MBean描述符
+
+即XML文件
+
+```xml
+<?xml version="1.0"?>
+<!DOCTYPE mbeans-descriptors PUBLIC
+ "-//Apache Software Foundation//DTD Model MBeans Configuration File"
+ "http://jakarta.apache.org/commons/dtds/mbeans-descriptors.dtd">
+
+<mbeans-descriptors>
+  
+  <mbean name="myMBean"
+    className="javax.management.modelmbean.RequiredModelMBean"
+    description="The ModelMBean that manages our Car object"
+    type="ex20.pyrmont.modelmbeantest.Car">
+
+    <attribute name="Color"
+      description="The car color"
+      type="java.lang.String"/>
+
+    <operation name="drive"
+      description="drive method"
+      impact="ACTION"
+      returnType="void">
+      <parameter name="driver" description="the driver parameter"
+        type="java.lang.String"/>
+    </operation>
+
+  </mbean>
+
+</mbeans-descriptors>
+
+```
+mbean的属性：
+- className:ModelMBean接口的Java类的完全限定名
+- description：MBean的简单描述
+- domain：创建ModelMBean的实例被注册到的MBean服务器的域名
+- group：组分类的可选名，选择具有相似MBean实现的组
+- name：MBean名称的唯一标识
+- type:实体类的完全限定的类名
+
+attribute属性：
+- description：属性的简单描述
+- displayName：属性的显示名称
+- getMethod：getter方法
+- is：该属性是否是布尔值，是否有getter
+- name：JavaBean的属性名称
+- readable：表明该属性是否可读
+- type:完全限定的Java类名
+....
+
+operation元素
+- description:方法的描述
+- impact：方法的影响
+- name：公共方法的名称
+- returnType：返回值的Java类的完全限定
+
+
+#### Registry类
+
+- 获取MBeanServer实例
+- 使用loadRegistry来获取MBean描述符
+- 创建一个ManagedBean，用于创建MBean实例
+
+#### ManagerBean
+
+描述一个模型MBean，取代MBeanInfo对象
+
+#### BaseModelMBean
+
+实现了ModelMBean,不再需要RequiredModelMBean
+
+### Catalina中的MBean
+
+#### ClassNameMBean
+className表示托管资源的类名
+
+#### StandardServerMBean
+重写了store来管理StandardServer
+
+#### MBeanFactory类
+工厂对象，创建管理Tomcat中的各种资源的所有的MBean
+
+#### MBeanUtil
+提供静态方法来创建管理 Catalina对象 的MBean
+
+### 创建Catalina的MBean
+
+创建MBean并利用这些MBean管理Catalina中的托管资源。
+
+在StandardServer启动的时候，会触发事件，这时候会调用createMBeans,来创建所有的MBean实例
+
+```java
+ protected void createMBeans() {
+
+        try {
+
+            MBeanFactory factory = new MBeanFactory();
+            // 利用MBeanUtil为MBeanFactory创建ObjectName并注册到MBean服务器中
+            createMBeans(factory);
+            // 为Server对象创建一个MBean ，并未所有的server包含的service以及service相关联的connector和container创建MBean对象进行注册，
+            createMBeans(ServerFactory.getServer());
+
+        } catch (MBeanException t) {
+
+            Exception e = t.getTargetException();
+            if (e == null)
+                e = t;
+            log("createMBeans: MBeanException", e);
+
+        } catch (Throwable t) {
+
+            log("createMBeans: Throwable", t);
+
+        }
+
+    }
+```
+createMBean(Context context) 为当前容器和所有的子容器创建MBean
+
+所有的context都必须能够获取到对应的registry和MBeanServer，通过他们来进行对Web应用的管理。
+
+## 附录
 - 描述符文件: ****.xml
-- 通过将变化无限往下压，来减小变化带来的影响范围
+- 通过封装变化，让变化尽量在最底层，来减小未来代码的变化带来的影响
+- Engine 包含多个 Host（其实其实不同的域名），一个Host对应多个Context（Web应用程序），Context包含多个Wrapper（一个Wrapper，一个Wrapper
+是一个管道pipeline，包含了一个基础阈和多个其他阈，真正对请求的处理其实是通过阈进行处理，就像一个过滤链一样层层调用，阈加载Servlet类，通过将上下文放入request请求中，最后通过调用servlet的service
+方法进行处理。包含了对父容器的引用（为了符合双亲委派机制，当前容器只通过父类来加载）来获取加载器
+- 通过对象的池化，减少了对象创建时的开销。
+- 实现lifeCycle之后，一旦 Catalina 启动（Catalina实现了Digester,用于读取所有的xml配置文件，进行规则配置），即父容器启动，所有的子容器都能启动;通过LifeCycleListener
+实现，来对容器进行相应的配置设置，只有正确配置才能进行真正启动。
+- Bean是通过域名:属性键值对进行标识符，在创建之后方便存取。通过ManagerBean读取xml配置进行MBean创建，之后就是通过标识符进行管理。
