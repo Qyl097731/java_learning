@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 
 /**
@@ -25,22 +26,25 @@ public class Solution6243 {
             g[u].add (v);
             g[v].add (u);
         }
-        dfs (0, -1, seats, g);
+        BiFunction<Integer, Integer, Long> dfs = new BiFunction<Integer, Integer, Long> ( ) {
+            @Override
+            public Long apply(Integer cur, Integer fa) {
+                long temp = 1;
+                List<Integer> edge = g[cur];
+                for (int i = 0; i < edge.size ( ); i++) {
+                    int to = edge.get (i);
+                    if (to != fa) {
+                        temp += apply (to, cur);
+                    }
+                }
+                res += (cur != 0 ? 1 : 0) * (temp + seats - 1) / seats;
+                return temp;
+            }
+        };
+
+        dfs.apply (0, -1);
 
         return res;
-    }
-
-    long dfs(int cur, int fa, int seats, List<Integer>[] g) {
-        long temp = 1;
-        List<Integer> edge = g[cur];
-        for (int i = 0; i < edge.size ( ); i++) {
-            int to = edge.get (i);
-            if (to != fa) {
-                temp += dfs (to, cur, seats, g);
-            }
-        }
-        res += (cur != 0 ? 1 : 0) * (temp + seats - 1) / seats;
-        return temp;
     }
 
     @Test
