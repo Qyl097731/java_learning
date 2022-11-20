@@ -61,8 +61,7 @@ Netty的Channel简化了Socket的复杂性。
 
 - 一个EventLoopGroup 包含一个或者多个EventLoop ；
 - 一个EventLoop 它的生命周期内只与一个Thread绑定；
-- 所有由EventLoop处理的I/O事件都将在它专有的Thread上被
-处理；
+- 所有由EventLoop处理的I/O事件都将在它专有的Thread上被处理；
 - 一个Channel 在它的生命周期内只注册一个EventLoop ；
 - 一个EventLoop 可能会被分配给一个或者多个Channel 。
 
@@ -261,7 +260,7 @@ for(ByteBuf buf:messageBuf){...}
 
 #### 按需分配
 
-ByteBufAllocator接口
+ByteBufAllocator 接口
 
 降低了分配和释放内存的开销，通过池化，可以用来分配任意类型的的ByteBuf实例。
 
@@ -270,7 +269,7 @@ ByteBufAllocator接口
 可以通过Channel或者ChannelHandlerContext进行获取
 ```java
 Channel channel = ...;
-ByteBufAllocator allocator = channel.alloc();
+ByteBufAllocator allocator = channel.alloc(); 
 
 ChannelHandlerContext ctx = ...;
 ByteBufAllocator allocator2 = ctx.alloc();
@@ -296,4 +295,45 @@ ByteBufAllocator allocator2 = ctx.alloc();
 release()方法会清空所有的活动引用。
 
 > 一般来说最后都是由引用技术的对象那一方来负责释放。
+
+## ChannelHandler 和 ChannelPipeline
+
+### ChannelHandler
+
+#### Channel的生命周期
+
+<img src="./images/1668870008757.jpg />
+
+注册之后接收请求，然后发送给ChannelPipeline的ChannelHandler中注册到EventLoop（线程），运行完成之后变成不活跃，最后取消注册。
+
+#### ChannelHandler的生命周期
+
+<img src="./images/1668870562166.jpg />
+
+子接口：
+- ChannelInboundHandler 处理入站数据
+- ChannelOutboundHandler 处理出站数据集
+
+#### ChannelInboundHandler接口
+
+常用方法：
+
+<img src="./images/1668870875714.jpg />
+
+#### ChannelOutboundHandler 接口
+
+按需推迟操作或者事件，如远程节点的写入被暂停了，那么可以推迟冲刷操作并在稍后继续。
+
+<img src="./images/1668871324194.jpg />
+<img src="./images/1668871358454.jpg />
+
+> ChannelPromise 和 ChannelFuture 在数据出站完成之后，进行通知；ChannelPromise是ChannelFuture的子类，如setSuccess和setFailure
+
+#### ChannelHandler适配器
+
+就像Tomcat中好多容器都存在XXXXBase一样，这里ChannelInboundHandlerAdapter和ChannelOutboundHandler提供了ChannelInboundHandler接口和ChannelOutboundHandler 接口一些基本实现，
+
+> @Sharable 表示可以被添加到多个容器中
+
+
 
