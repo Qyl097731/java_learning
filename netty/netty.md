@@ -372,9 +372,70 @@ ChannelHandler可以同时实现出站和入站，在ChannelPipeline中，默认
 
 每次出战返回一个ChannelFuture，注册到其中的ChannelFutureListener在操作完成时被通知操作是否成功。
 
+## EventLoop和线程模型
 
+### EventLoop接口
 
+基于Java.util.concurrent包，一个EventLoop可以回被指派用于服务多个Channel，同时根据核心的不同，能创建多个EventLoop实例。通过parent方法能获取当前EventLoop
+实例所属的EventLoopGroup。
 
+保证了在同一个线程中处理某个EventLoop中所产生的所有事件，解决了上下文切换开销的问题。
 
+### 任务调度
 
+#### JDK的任务调度
+
+通过ScheduledExecutorService来实现
+
+<img src="./images/1669041989679.jpg />
+
+#### EventLoop调度任务
+
+线程池管理会有额外线程的创建，这将会导致性能瓶颈，Netty通过Channel的EventLoop实现任务调度解决了这个问题。
+
+```java
+        ScheduledFuture<?> future=ch.eventLoop().schedule(()->{
+            System.out.println ("5 s later" );
+        },5, TimeUnit.SECONDS);
+```
+在5s后提交给Channel的EventLoop执行。
+
+```java
+        ScheduledFuture<?> future=ch.eventLoop().scheduleAtFixedRate(()->{
+            System.out.println ("5 s later" );
+        },5,5, TimeUnit.SECONDS);
+```
+在5s后每5s提交给Channel的EventLoop执行。
+
+### 实现细节
+
+#### 线程管理
+
+通过检查Thread是否是分配给当前Channel以及他的EventLoop的那个线程，如果是就直接执行，否则就放入队列之后执行。
+
+<img src="./images/1669044111993.jpg />
+
+每个EventLoop都有自己的任务队列，相互之间独立，所以不需要额外在ChannelHandler中进行额外同步。
+
+> 长时间的任务 通过EventExecutor进行执行，不要使用EventLoop，回导致饥饿
+
+#### EventLoop线程的分配
+
+EventLoop包含在EventLoopGroup中，不同的传输实现，EventLoop的创建和分配也不同。
+
+1. 异步传输
+
+少量被多个Channel共享的EventLoop。
+
+<img src="./images/1669044804181.jpg />
+
+EventLoopGroup 分配 固定的EventLoop（一个线程），之后每个Channel都会被EventLoopGroup分配一个EventLoop.之后通过轮询调用每个EventLoop队列中的Channel。
+
+由于多个Channel共享一个EventLoop（线程），所以ThreadLocal用处大大减小。
+
+2. 阻塞传输
+
+<img src="./images/1669045379489.jpg />
+
+一个Thread一个Channel，所以保证了Netty涉及的一致性。保证了Netty的可靠性和易用性。
 
