@@ -314,6 +314,10 @@ release()方法会清空所有的活动引用。
 - ChannelInboundHandler 处理入站数据
 - ChannelOutboundHandler 处理出站数据集
 
+如果被添加到多个Pipeline的时候要标注@Sharable，必须保证ChannelHandler是线程安全的。
+
+> 通过共享ChannelHandler可以让多个ChannelPipeline来跨Channel统计信息。
+
 #### ChannelInboundHandler接口
 
 常用方法：
@@ -334,6 +338,43 @@ release()方法会清空所有的活动引用。
 就像Tomcat中好多容器都存在XXXXBase一样，这里ChannelInboundHandlerAdapter和ChannelOutboundHandler提供了ChannelInboundHandler接口和ChannelOutboundHandler 接口一些基本实现，
 
 > @Sharable 表示可以被添加到多个容器中
+
+##### 资源管理
+在消耗或者无法传输消费时都要进行资源的释放。尤其是在消费之后，还要传回已经处理的通知，同时Netty提供了资源泄露检测机制。
+
+### ChannelPipeline
+
+链，每次ChannelHandler创建都被分配到一个ChannelPipeline，不受开发人员干预。
+
+ChannelHandler可以同时实现出站和入站，在ChannelPipeline中，默认同一个方向的Handler先处理。
+
+### ChannelHandlerContext
+
+代表了ChannelHandler 和 ChannelPipeline的关联，每当ChannelHandler 添加到 ChannelPipeline之后，就会创建ChannelHandlerContext
+，主要负责和下一个ChannelHandler的交互。而ChannelHandler和ChannelPipeline的方法则是负责整个Pipeline的交互。
+
+可以通过该类来获取Channel和Pipeline的引用，也能获取ChannelHandler。
+
+事件流更短，所以ChannelHandlerContext拥有最大的性能。即可以从ChannelPipeline的某个特定点开始传播事件，可以减少它不感兴趣的ChannelHandler
+带来的开销。同时避免将事件传入可能对他感兴趣的ChannelHandler。
+
+简而言之，就是减少对其他人的没必要的影响。
+
+<img src="./images/1669035299947.jpg />
+
+### 异常处理
+
+#### 入站异常处理
+
+默认将异常转发给pipeline中的下一个ChannelHandler，如果到达尾端，就记录为未处理，之后决定要不要将异常传播出去。
+
+#### 出站异常处理
+
+每次出战返回一个ChannelFuture，注册到其中的ChannelFutureListener在操作完成时被通知操作是否成功。
+
+
+
+
 
 
 
