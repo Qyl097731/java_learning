@@ -439,3 +439,51 @@ EventLoopGroup 分配 固定的EventLoop（一个线程），之后每个Channel
 
 一个Thread一个Channel，所以保证了Netty涉及的一致性。保证了Netty的可靠性和易用性。
 
+## 引导
+
+### Bootstrap类
+
+引导层负责将所有的层次结构组装起来并运行。服务器致力于使用一个父Channel来接收客户端连接，子Channel来用于它们之间的通信。客户端需要一个单独的，没有父Channel的Channel来用于网络交互
+
+> 引导类被标记为Cloneable，通过浅拷贝使得配置完成的引导类实例能够被另许多有相同配置的Channel来使用。
+
+### 引导客户端
+
+Bootstrap在bind方法之后就创建一个新的Channel，之后调用connect来建立连接。
+
+在connect之后，Bootstrap会创建一个新的Channel
+
+<img src="./images/1669105501138.jpg />
+
+> 在引导的过程中，调用bind或者connect之前，必须调用以下方法来设置所需的组件
+> group
+> channel 或者 channelFactory
+> handler
+
+### 引导服务器
+
+<img src="./images/1669107419968.jpg />
+
+如网络编程的Selector思想由来一样，首先依旧绑定一个监听客户端请求的端口，之后有客户端请求到来之后，就分配新的Channel（即端口）来和客户端保持通信，在这个过程中该Channel分配到的EventLoop
+（线程）在所有的创建了的Channel之间共享。通过group来进行线程共享，有点多线程Selector的味道了噢。
+
+### 为引导过程添加多个ChannelHandler
+
+将多个ChannelHandler添加到ChannelPipeline中，如果程序中在初始化引导类的时候需要多个Handler就可以自定义实现ChannelInitializerImpl来安装到ChannelPipeline；
+
+ChannelInitializer就好像Tomcat中的RuleSet的思想（把所有的规则在一个地方统一配置）一样，把所有的Handler都在initChannel时进行添加。
+
+### 使用Netty的ChannelOption和属性
+
+通过ChannelOption能够让所有创建的Channel自动完成配置。
+可用的ChannelOption 包括底层连接的详细信息，如keep-alive 或者超时属性以及缓冲区设置。就像SocketOption一样可以设置很多属性值。
+
+通过AttributeMap抽象（一个由Chanel和引导类提供的集合）以及AttributeKey<T>（一个用于插入和获取属性值的泛型类）可以将任何类型的数据项阈客户端和服务器Channel相关联。
+
+### 引导DatagramChannel
+
+无连接的数据包进行传输需要该类。详情见com.nju.netty.ch08.Demo06
+
+### 关闭
+
+优雅地关闭。详情见com.nju.netty.ch08.Demo07
