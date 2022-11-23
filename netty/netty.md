@@ -1,5 +1,7 @@
 # Netty
 
+# 简单API介绍
+
 ## 异步和事件驱动
 
 demo01中通过套接字实现简单通信，但是如果是大量用户需要通讯就面临三个问题
@@ -514,4 +516,106 @@ ChannelInitializer就好像Tomcat中的RuleSet的思想（把所有的规则在�
 
 如果读取的字节数超出了某个特定的限制，就会抛出TooLongFrameException来防范资源被耗尽的方法。
 
+# 编解码器
+
+应用程序和网络之间的数据转换，需要编码器和解码器。
+
+## 编解码器框架
+
+### 什么是编解码器
+
+编解码器由编码器和解码器组成，将字节流从一种格式转换为另一种格式。
+
+编码器操作出站数据，解码器处理入站数据。
+
+### 解码器
+
+- 将字节解码为消息——ByteToMessageDecoder 和 ReplayingDecoder
+- 将另一种消息类型解码为另一个种——MessageToMessageDecoder
+
+为了处理入站数据，所以解码器实现了ChannelInboundHandler
+
+#### ByteToMessageDecoder
+
+将字节解码为消息，会对入站数据进行缓冲，直到准备好处理。
+
+<img src="./images/1669207033689.jpg />
+
+> 编解码器的引用计数
+>
+> 消息一旦被编码或者解码，就会被自动释放，如果想以后继续引用可以`ReferenceCountUtil.retain(message)` 来增加引用计数，防止释放。
+
+#### 抽象类ReplayingDecoder
+
+扩展了ByteToMessageDecoder，不必调用readableBytes，只需要使用其自定义的ReplayingDecoderByteBuf即可。
+
+详情见com.nju.netty.ch10.demo01.ToIntegerDecoder2。不足会抛出Error，如果数据足够多会继续调用read。
+
+> 更多类处理器：
+>
+> - LineBasedFrameDecoder：通过行尾控制字符(\n或者\r\n)来解析消息数据
+> - HttpObjectDecoder：一个Http数据的解码器
+
+#### MessageToMessageDecoder
+
+在channel之间进行数据的转换
+
+<img src="./images/1669208562210.jpg />
+
+详情见com.nju.netty.ch10.demo01.IntegerToStringDecoder
+
+其中整个Demo1的流程图：
+
+<img src="./images/1669208817642.jpg />
+
+#### TooLongFrameException
+
+为了防止解码器缓冲大量数据以至于耗尽内存，通过TooLongFrameException类，可以使得帧超出指定大小限制时抛出。
+
+当使用一个可变帧大小的协议的时候，这种保护措施尤为重要。
+
+详情见com.nju.netty.ch10.demo02.SafeByteToMessageDecoder
+
+### 编码器
+
+#### MessageToByteEncoder
+
+<img src="./images/1669209409528.jpg />
+
+详情见com.nju.netty.ch10.demo03.ShortToByteEncoder
+
+流程图如下：
+<img src="./images/1669209815504.jpg />
+
+#### 抽象类MessageToMessageEncoder
+
+详情见com.nju.netty.ch10.demo03.IntegerToStringEncoder
+
+### 抽象的编解码器类
+
+复合了ChannelInboundHandler 和 ChannelOutboundHandler 接口。但是可用性和可扩展性差。
+
+#### 抽象类的ByteToMessageCodec
+
+将字节码进行解码，可能为POJO，之后再编码。
+
+#### 抽象类MessageToMessageCodec
+
+decode将 INBOUND_IN 类型的数据转化为 OUTBOUND_IN 类型的消息，encode则进行逆向操作，
+
+INBOUND_IN就好似网络传送的类型，OUTBOUND_IN就好似是应用程序所处理的类型
+
+> WebSocket : 能实现Web浏览器和服务器之间的双向通信。
+
+#### CombinedChannelDuplexHandler
+
+避免了一个独立部署解码器编码器损失的便利性和结合解码器、编码器的可重用性。
+
+充当ChannelInboundHandler和ChannelOutboundHandler的容器，。
+
+其实就是通过组合代替继承思想。
+
+详情见com.nju.netty.ch10.demo05;
+
+## 预置的ChannelHandler和编解码器
 
