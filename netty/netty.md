@@ -487,3 +487,31 @@ ChannelInitializer就好像Tomcat中的RuleSet的思想（把所有的规则在�
 ### 关闭
 
 优雅地关闭。详情见com.nju.netty.ch08.Demo07
+
+## 单元测试
+
+### EmbeddedChannel 概述
+
+这个实现提供了通过ChannelPipeline传播事件的简便方法。将入站或者出站数据写入到EmbeddedChannel中，检查是否有东西到达ChannelPipeline
+的尾端，以此得知消息是否被编码或者解码以及触发了ChannelHandler动作。
+
+常用方法：
+<img src="./images/1669189235970.jpg />
+
+流程图：
+<img src="./images/1669186752212.jpg />
+
+### 使用EmbeddedChannel测试ChannelHandler
+
+#### 测试入站消息
+
+详情见com.nju.netty.ch09.demo01.FixedLengthFrameDecoder
+
+#### 测试出站消息
+详情见com.nju.netty.ch09.demo02.AbsIntegerEncoder
+
+### 测试异常处理
+
+如果读取的字节数超出了某个特定的限制，就会抛出TooLongFrameException来防范资源被耗尽的方法。
+
+
