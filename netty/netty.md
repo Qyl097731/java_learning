@@ -619,3 +619,41 @@ INBOUND_IN就好似网络传送的类型，OUTBOUND_IN就好似是应用程序�
 
 ## 预置的ChannelHandler和编解码器
 
+### 通过SSL/TLS保护Netty应用程序
+
+> TLS：传输层安全协议
+
+Java提供了javax.net.ssl包，SSLContext和SSLEngine使得实现解密和加密非常简单直接。Netty通过SslHandler的ChannelHandler实现该API，内部通过SSLEngine来完成实际工作。
+
+> Netty还提供了OpenSSL工具包的SSLEngine实现，比JDK提供的SSLEngine具有更好的性能
+。
+
+Netty通过SslHandler进行加密解密的数据流：
+<img src="./images/1669217047824.jpg />
+
+通过ChannelInitializer进行设置，之前提过使用该类进行Handler的注册。
+
+因为是第一个Channel在pipeline最后返回，所以把sslHandler作为第一个Handler可以使得数据处理之后在进行加密。
+
+在握手阶段，两个节点可以相互验证并且商定加密方式，SSL/TLS握手一旦完成之后提供通知，数据就会被加密。
+
+### 构建基于Netty的HTTP/HTTPS应用程序
+
+通过Netty提供的ChannelHandler来处理HTTP、HTTPS不需要编写编解码器，详情见com.nju.netty.ch11.demo01.SslChannelInitializer
+
+#### HTTP解码器、编码器、编解码器
+
+Netty提供了多个种解码器、编码器来简化对这个协议的使用。如下所示：
+<img src="./images/1669218592582.jpg />
+<img src="./images/1669218655325.jpg />
+<img src="./images/1669218716463.jpg />
+
+详情见com.nju.netty.ch11.demo02.HttpPipelineInitializer.
+
+#### 聚合HTTP消息
+
+注册之后可以处理HTTPObject消息了，但是由于HTTP请求和响应由很多部分组成，需要聚合。Netty提供了聚合器（添加了新的ChannelHandler)进行分段信息缓冲，最后使得能看到完整消息进行发送。
+
+
+
+
