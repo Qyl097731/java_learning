@@ -654,6 +654,112 @@ Netty提供了多个种解码器、编码器来简化对这个协议的使用。
 
 注册之后可以处理HTTPObject消息了，但是由于HTTP请求和响应由很多部分组成，需要聚合。Netty提供了聚合器（添加了新的ChannelHandler)进行分段信息缓冲，最后使得能看到完整消息进行发送。
 
+详情见：com.nju.netty.ch11.demo03.HttpAggregatorInitializer
 
+#### HTTP压缩
 
+使用HTTP时，开启压缩功能来减小传输数据的大小，但是会损失一些CPU时钟周期上的开销
 
+Netty为压缩和解压缩提供了ChannelHandler，同时支持gzip和deflate编码
+
+> HTTP请求头种支持的压缩格式，如下：
+>
+> <img src="./images/1669271402822.jpg />
+
+详情见：com.nju.netty.ch11.demo04.HttpCompressionInitializer
+
+#### HTTPS
+
+将SSLHandler添加到ChannelPipeline即可。
+详情见：com.nju.netty.ch11.demo05.HttpsCodecInitializer
+
+#### WebSocket
+
+为网页和远程服务器之间的双向通信提供了一种代替HTTP轮询的方案。
+
+通信以开始的普通HTTP协议逐渐升级成为双向的WebSocket。如下所示：
+
+<img src="./images/1669278817655.jpg />
+
+同样为了应用程序支持WebSocket，需要将适当的客户端或者服务器WebSocketChannel添加到ChannelPipeline中，通过它俩来处理WebSocket定义的特殊帧（WebSocketFrame分为数据帧或者控制帧）；
+
+<img src="./images/1669279045539.jpg />
+
+<img src="./images/1669279089425.jpg />
+
+详情见：com.nju.netty.ch11.demo06.WebSocketServerInitializer
+
+### 空闲的连接和超时
+
+检查空闲连接以及超时及时释放资源至关重要。
+
+<img src="./images/1669280241030.jpg />
+
+详情见：com.nju.netty.ch11.demo07.IdleStateHandlerInitializer
+
+### 解码基于分隔符的协议和基于长度的协议
+
+#### 基于分隔符的协议
+
+使用定义的字符来标记消息或者消息段。
+
+- DelimiterBasedFrameDecoder : 使用用户自定义的分隔符来提取帧的解码器
+- LineBasedFrameDecoder：提取行尾符分割的帧的解码器
+
+详情见：com.nju.netty.ch11.demo09.CmdHandlerInitializer
+
+#### 基于长度的协议
+
+在帧的头部存储了长度编码。
+
+- FixedLengthFrameDecoder：在调用构造函数时指定的定长帧
+- LengthFieldBasedFrameDecoder：根据帧头部中存储的头部的长度提取帧。当帧变化时采用该方法。
+
+详情见：com.nju.netty.ch11.demo10.LengthBasedInitializer
+
+### 写大型数据
+
+写操作非阻塞，所以没有写出所有数据也会在完成时返回ChannelFuture，如果慢连接就会导致内存释放的延迟，导致内存耗尽。
+
+通过Netty的零拷贝的支持（将数据直接从文件传输到网络接口），只需要实现FileRegion作为传输通道即可。
+
+```java
+    // 从文件传输到网络接口，知识和文件内容的直接传输
+    FileInputStream in = new FileInputStream (file);
+    FileRegion region = new DefaultFileRegion (
+            in.getChannel ( ), 0, file.length ( ));
+    channel.writeAndFlush(region).addListener(
+            new ChannelFutureListener() {
+        @Override
+        public void operationComplete (ChannelFuture future) throws Exception {
+            if (!future.isSuccess ( )) {
+                Throwable cause = future.cause ( );
+                // Do something
+            }
+        }
+    });
+```
+
+详情见：com.nju.netty.ch11.demo12.ChunkedWriteHandlerInitializer
+
+### 序列化数据
+
+#### JDK序列化
+
+出于兼容性，且必须和使用了ObjectOutputStream和ObjectInputStream的远程节点交互就应该选在JDK序列化。Netty提供的用于和JDK进行操作的序列化类：
+<img src="./images/1669293973099.jpg />
+
+#### 使用 JBoss Marshalling 进行序列化
+
+通过工厂配置实现参数可插拔，比JDK序列化快三倍。Netty对两组解码器、编码器为JBoss Marshalling提供支持。适合和使用了JBoss Marshalling的远程节点一起使用。
+<img src="./images/1669294271362.png />
+
+详情见：com.nju.netty.ch11.demo13.MarshallingInitializer
+
+#### 通过Protocol Buffers序列化
+
+紧凑且高效对结构化的数据进行编码以及解码，多种语言绑定，适合跨语言的项目。
+
+<img src="./images/1669295108504.jpg />
+
+详情见：com.nju.netty.ch11.demo14.ProtoBufInitializer
