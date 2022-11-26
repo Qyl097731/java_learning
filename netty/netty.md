@@ -763,3 +763,50 @@ Netty为压缩和解压缩提供了ChannelHandler，同时支持gzip和deflate�
 <img src="./images/1669295108504.jpg />
 
 详情见：com.nju.netty.ch11.demo14.ProtoBufInitializer
+
+# 网络协议
+
+WebSocket提高Web应用程序的性能以及响应性而开发的先进的网络协议。
+
+## WebSocket
+
+详情见com.nju.netty.ch12.demo01
+
+> 实时Web：能够消息发出就被另一方收到，不需要周期性检查或者更新
+
+### WebSocket简介
+
+能够在Web上进行双向数据传输，异步处理消息回执。
+
+<img src="./images/1669297036062.jpg />
+
+聊天室服务器逻辑展示：
+<img src="./images/1669297269043.jpg />
+
+详情代码见：com.nju.netty.ch12.demo01
+
+#### 处理HTTP请求
+
+显示聊天室以及发出的消息的网页。
+
+> WebSocket帧 传输方式每一帧代表一部分消息，一个完整的消息有很多帧
+
+#### 处理WebSocket帧
+
+6中WebSocket帧：
+<img src="./images/1669464727136.jpg />
+
+#### 初始化ChannelPipeline
+在ChatServerInitializer初始化pipeline之后的管道状态：
+<img src="./images/1669467560171.jpg />
+
+HttpRequest升级为WebSocket之后的管道状态：
+<img src="./images/1669468629726.jpg />
+
+#### 引导
+
+创建引导来安装ChatServerInitializer代码
+
+
+
+
