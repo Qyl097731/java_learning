@@ -13,18 +13,33 @@ public class ListNode {
     public ListNode next;
     public ListNode() {}
     public ListNode(int val) { this.val = val; }
-    public ListNode(int val, ListNode next) { this.val = val; this.next = next; }
 
-    public static ListNode createList(int[] vals){
+    public ListNode(int val, ListNode next) {
+        this.val = val;
+        this.next = next;
+    }
+
+    public static ListNode createList(int[] vals) {
         ListNode head = null;
         for (int i = 0; i < vals.length; i++) {
-            head = insertNode(head,vals[i]);
+            head = insertNode (head, vals[i]);
         }
         return head;
     }
 
-    public static ListNode insertNode(ListNode head,int val) {
-        ListNode node = new ListNode(val, null);
+    public static ListNode build(int[] nums, int cur, ListNode head) {
+        if (cur == nums.length) {
+            return null;
+        }
+        ListNode node = new ListNode (nums[cur], null);
+        node.next = head.next;
+        head.next = node;
+        build (nums, cur + 1, node);
+        return node;
+    }
+
+    public static ListNode insertNode(ListNode head, int val) {
+        ListNode node = new ListNode (val, null);
         if (head == null) {
             return head = node;
 
