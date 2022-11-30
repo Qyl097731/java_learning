@@ -807,6 +807,46 @@ HttpRequest升级为WebSocket之后的管道状态：
 
 创建引导来安装ChatServerInitializer代码
 
+## 使用UDP广播事件
+
+### UDP基础知识
+
+TCP需要建立、释放连接，保证数据有序可靠的传输。UDP不需要连接，不能保证有序可靠，但是速度快。
+
+### UDP广播
+
+TCP和UDP都支持单播的传输方式，传送到一个唯一地址标识的网络目的地。UDP还支持多播、国博。
+
+### UDP应用程序
+
+详情见：com.nju.netty.ch13.demo01
+
+处于安全考虑，不建议在不安全的环境中使用UDP广播。路由器出于该原因也会广播消息限制在来源网络
+
+> 发布订阅模式：生产者或者服务发布事件，多个客户端进行订阅
+
+<img src="./images/1669535567865.jpg />
+
+### 编写广播
+
+主要的消息容器和Channel类型：
+<img src="./images/1669536294565.jpg />
+
+整体事件流：
+<img src="./images/1669536896179.jpg />
+
+### 编写监视器
+
+讲netcat替换为一个更加完整的事件消费者，称之为LogEventMonitor。
+
+1. 接收LogEventBroadcaster广播的UDP DatagramPacket
+2. 将他们解码为LogEvent消息
+3. 通过LogEvent消息写出到System.out
+
+<img src="./images/1669541000362.jpg />
+
+首先用Decoder将入站数据进行解码成指定的类型，经典的Netty操作。
+
 
 
 
