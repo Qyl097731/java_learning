@@ -1,9 +1,10 @@
 package templates;
 
-import java.util.*;
 import java.io.*;
+import java.util.StringTokenizer;
 
-import static java.lang.System.*;
+import static java.lang.System.in;
+import static java.lang.System.out;
 
 /**
  * @author asus
@@ -27,7 +28,7 @@ public class Template {
         close();
     }
 
-    private static void solve() throws IOException {
+    private static void solve() {
 
     }
 }
@@ -41,7 +42,7 @@ class FastScanner {
     }
 
     public FastScanner(String s) throws FileNotFoundException {
-        br = new BufferedReader(new FileReader(new File(s)));
+        br = new BufferedReader (new FileReader (s));
     }
 
     public String next() throws IOException {
