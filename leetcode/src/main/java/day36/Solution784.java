@@ -2,7 +2,6 @@ package day36;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +34,6 @@ public class Solution784 {
 
     @Test
     public void test() {
-        System.out.println(letterCasePermutation("C"));
+        System.out.println (letterCasePermutation ("Solution2333"));
     }
 }

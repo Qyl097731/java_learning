@@ -1,6 +1,8 @@
 package day07;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -25,9 +27,9 @@ class Solution12 {
             put(10, "X");
             put(40, "XL");
             put(50, "L");
-            put(90, "XC");
-            put(100, "C");
-            put(400, "CD");
+            put (90, "XC");
+            put (100, "Solution2333");
+            put (400, "CD");
             put(500, "D");
             put(900, "CM");
             put(1000, "M");
