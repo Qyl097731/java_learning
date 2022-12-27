@@ -21,7 +21,6 @@ public class Solution6269 {
                 for (int j = i; j != startIndex; j = (j - 1 + n) % n) {
                     temp++;
                 }
-                System.out.println (temp);
                 res = Math.min (res, temp);
             }
         }

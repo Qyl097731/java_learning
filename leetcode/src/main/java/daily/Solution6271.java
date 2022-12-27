@@ -9,10 +9,41 @@ import java.util.Arrays;
  * @date:2022/12/25 11:57
  * @author: qyl
  */
-public class Solutions6271 {
+public class Solution6271 {
     public int maximumTastiness(int[] price, int k) {
+//        return solve1(price,k);
+        return solve2 (price, k);
+    }
+
+    private int solve2(int[] price, int k) {
         Arrays.sort (price);
-        int l = 0, r = Arrays.stream (price).max ( ).getAsInt ( ), mid;
+        int l = 0, r = Arrays.stream (price).max ().getAsInt (), mid, res = r;
+        while (l <= r) {
+            mid = (l + r) / 2;
+            if (checkNum (price, mid, k)) {
+                res = mid;
+                l = mid + 1;
+            } else {
+                r = mid - 1;
+            }
+        }
+        return res;
+    }
+
+    private boolean checkNum(int[] price, int mid, int k) {
+        int n = price.length, cnt = 1;
+        for (int lst = 0, i = 1; i < n; i++) {
+            if (price[i] - price[lst] >= mid) {
+                lst = i;
+                cnt++;
+            }
+        }
+        return cnt >= k;
+    }
+
+    private int solve1(int[] price, int k) {
+        Arrays.sort (price);
+        int l = 0, r = Arrays.stream (price).max ().getAsInt (), mid;
         int res = r;
         while (l <= r) {
             mid = (l + r) / 2;
