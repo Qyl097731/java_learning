@@ -1072,7 +1072,10 @@ synchronized 对无竞争同步进行了优化（volatile总之非竞争的）�
 
 AttributeStore展示了一个例子,通过map查找用户位置，整个方法都是synchronized，但是实际上只有Map.get这一部分是真正需要锁的。
 
-通过BetterAttributeStore来减少锁持续的时间，提高性能;缩小锁的范围，提高吞吐量
+通过BetterAttributeStore来减少锁持续的时间，提高性能;缩小锁的范围，提高吞吐量。
+
+
+
 
 
 
