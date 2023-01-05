@@ -33,13 +33,15 @@ public class Offer12 {
 
         if (res) return;
 
+        if (word.charAt (len - 1) != board[x][y]) {
+            return;
+        }
+
         if (len == word.length ()) {
             res = true;
             return;
         }
-        if (word.charAt (len - 1) != board[x][y]) {
-            return;
-        }
+
         for (int i = 0; i < 4; i++) {
             int xx = x + dir[i][0], yy = y + dir[i][1];
             if (xx < n && xx >= 0 && yy < m && yy >= 0 && !vis[xx][yy] && !res) {
@@ -53,6 +55,6 @@ public class Offer12 {
     @Test
     public void test() {
         char[][] board = {{'A', 'B', 'C', 'E'}, {'S', 'F', 'C', 'S'}, {'A', 'D', 'E', 'E'}};
-        exist (board, "ABCCED");
+        exist (board, "ABCB");
     }
 }
