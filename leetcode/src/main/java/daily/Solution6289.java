@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
  * @date:2023/1/7 22:47
  * @author: qyl
  */
-public class C {
+public class Solution6289 {
     public int xorBeauty(int[] nums) {
 //        ((nums[i] | nums[j]) & nums[k])
         int[] cnt = new int[30];

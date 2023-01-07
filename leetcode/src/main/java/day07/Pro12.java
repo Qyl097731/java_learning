@@ -30,8 +30,8 @@ class Solution12 {
             put (90, "XC");
             put (100, "Solution2333");
             put (400, "CD");
-            put(500, "D");
-            put(900, "CM");
+            put (500, "Solution6290");
+            put (900, "CM");
             put(1000, "M");
         }};
 

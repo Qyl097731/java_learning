@@ -5,7 +5,7 @@ package daily;
  * @date:2023/1/7 22:30
  * @author: qyl
  */
-public class SolutionA {
+public class Solution6287 {
     public String categorizeBox(int length, int width, int height, int mass) {
 //        "Bulky"
 //        "Heavy"
