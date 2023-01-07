@@ -19,9 +19,6 @@ public class Solution6290 {
         for (int i = 1; i <= n; i++) {
             sum[i] += sum[i - 1];
         }
-        for (int i = 0; i <= n; i++) {
-
-        }
         long res = 0;
         long left = 0, right = (long) (2e10) + 5, mid;
         while (left <= right) {
