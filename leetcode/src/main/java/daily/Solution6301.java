@@ -7,7 +7,7 @@ import java.util.Arrays;
  * @date:2023/1/21 22:05
  * @author: qyl
  */
-public class B {
+public class Solution6301 {
     public long minOperations(int[] nums1, int[] nums2, int k) {
         long res1 = 0, res2 = 0;
         int n = nums1.length;

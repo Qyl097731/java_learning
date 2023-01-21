@@ -8,7 +8,7 @@ import java.util.Map;
  * @date:2023/1/21 22:05
  * @author: qyl
  */
-public class A {
+public class Solution6300 {
     public int getCommon(int[] nums1, int[] nums2) {
         Map<Integer, Integer> map = new HashMap<> ();
         for (int num : nums1) {

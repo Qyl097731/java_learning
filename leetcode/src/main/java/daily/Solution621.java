@@ -17,7 +17,7 @@ public class Solution621 {
 
         Arrays.sort (count);
 
-        // AXX AXX A   k = 2
+        // AXX AXX Solution6300   k = 2
         res = (count[25] - 1) * (k + 1) + 1;
 
         for (int i = 24; i >= 0; i--) {
