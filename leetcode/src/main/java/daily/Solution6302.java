@@ -1,9 +1,8 @@
 package daily;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.PriorityQueue;
+import java.util.stream.IntStream;
 
 /**
  * @description
@@ -13,26 +12,18 @@ import java.util.List;
 public class Solution6302 {
     public long maxScore(int[] nums1, int[] nums2, int k) {
         int n = nums1.length;
-        List<int[]> list = new ArrayList<> ();
+        Integer[] index = IntStream.range (0, n).boxed ().toArray (Integer[]::new);
+        Arrays.sort (index, (a, b) -> nums2[b] - nums2[a]);
+        PriorityQueue<Integer> queue = new PriorityQueue<> ();
+        long res = 0L, sum = 0;
         for (int i = 0; i < n; i++) {
-            list.add (new int[]{nums1[i], nums2[i]});
-        }
-        Collections.sort (list, (a, b) -> {
-            if (a[1] == b[1]) {
-                return b[0] - a[0];
+            sum += nums1[index[i]];
+            queue.offer (nums1[index[i]]);
+            if (queue.size () > k) {
+                sum -= queue.poll ();
             }
-            return b[1] - a[1];
-        });
-        long minx = Arrays.stream (nums2).max ().getAsInt () + 1, sum = 0;
-        boolean[] used = new boolean[n];
-        for (int j = 0; j < k; j++) {
-            for (int i = 0; i < n; i++) {
-                if (!used[i] && minx * sum <= Math.min (minx, nums2[i]) * (sum + nums1[i])) {
-                    minx = Math.min (minx, nums2[i]);
-                    sum += nums1[i];
-                    used[i] = true;
-                }
-            }
+            res = Math.max (res, queue.size () < k ? 0 : sum * nums2[index[i]]);
         }
+        return res;
     }
 }
