@@ -23,13 +23,84 @@ public class Solution1632 {
          */
         uf = new UnionFind (m, n);
         int[][] res = new int[m][n];
-        mergeIndex (m, n);
-        mergeIndex (n, m);
+        for (int i = 0; i < m; i++) {
+            Map<Integer, List<int[]>> num2indexList = new HashMap<Integer, List<int[]>> ();
+            for (int j = 0; j < n; j++) {
+                int num = matrix[i][j];
+                num2indexList.putIfAbsent (num, new ArrayList<int[]> ());
+                num2indexList.get (num).add (new int[]{i, j});
+            }
+            for (List<int[]> indexList : num2indexList.values ()) {
+                int[] arr1 = indexList.get (0);
+                int i1 = arr1[0], j1 = arr1[1];
+                for (int k = 1; k < indexList.size (); k++) {
+                    int[] arr2 = indexList.get (k);
+                    int i2 = arr2[0], j2 = arr2[1];
+                    uf.union (i1, j1, i2, j2);
+                }
+            }
+        }
+        for (int j = 0; j < n; j++) {
+            Map<Integer, List<int[]>> num2indexList = new HashMap<Integer, List<int[]>> ();
+            for (int i = 0; i < m; i++) {
+                int num = matrix[i][j];
+                num2indexList.putIfAbsent (num, new ArrayList<int[]> ());
+                num2indexList.get (num).add (new int[]{i, j});
+            }
+            for (List<int[]> indexList : num2indexList.values ()) {
+                int[] arr1 = indexList.get (0);
+                int i1 = arr1[0], j1 = arr1[1];
+                for (int k = 1; k < indexList.size (); k++) {
+                    int[] arr2 = indexList.get (k);
+                    int i2 = arr2[0], j2 = arr2[1];
+                    uf.union (i1, j1, i2, j2);
+                }
+            }
+        }
         /**
          * 建图
          */
-        addEdges (m, n, n);
-        addEdges (n, m, n);
+        Map<Integer, List<int[]>> adj = new HashMap<Integer, List<int[]>> ();
+        for (int i = 0; i < m; i++) {
+            Map<Integer, int[]> num2index = new HashMap<Integer, int[]> ();
+            for (int j = 0; j < n; j++) {
+                int num = matrix[i][j];
+                num2index.put (num, new int[]{i, j});
+            }
+            List<Integer> sortedArray = new ArrayList<Integer> (num2index.keySet ());
+            Collections.sort (sortedArray);
+            for (int k = 1; k < sortedArray.size (); k++) {
+                int[] prev = num2index.get (sortedArray.get (k - 1));
+                int[] curr = num2index.get (sortedArray.get (k));
+                int i1 = prev[0], j1 = prev[1], i2 = curr[0], j2 = curr[1];
+                int[] root1 = uf.find (i1, j1);
+                int[] root2 = uf.find (i2, j2);
+                int ri1 = root1[0], rj1 = root1[1], ri2 = root2[0], rj2 = root2[1];
+                degree[ri2][rj2]++;
+                adj.putIfAbsent (ri1 * n + rj1, new ArrayList<int[]> ());
+                adj.get (ri1 * n + rj1).add (new int[]{ri2, rj2});
+            }
+        }
+        for (int j = 0; j < n; j++) {
+            Map<Integer, int[]> num2index = new HashMap<Integer, int[]> ();
+            for (int i = 0; i < m; i++) {
+                int num = matrix[i][j];
+                num2index.put (num, new int[]{i, j});
+            }
+            List<Integer> sortedArray = new ArrayList<Integer> (num2index.keySet ());
+            Collections.sort (sortedArray);
+            for (int k = 1; k < sortedArray.size (); k++) {
+                int[] prev = num2index.get (sortedArray.get (k - 1));
+                int[] curr = num2index.get (sortedArray.get (k));
+                int i1 = prev[0], j1 = prev[1], i2 = curr[0], j2 = curr[1];
+                int[] root1 = uf.find (i1, j1);
+                int[] root2 = uf.find (i2, j2);
+                int ri1 = root1[0], rj1 = root1[1], ri2 = root2[0], rj2 = root2[1];
+                degree[ri2][rj2]++;
+                adj.putIfAbsent (ri1 * n + rj1, new ArrayList<int[]> ());
+                adj.get (ri1 * n + rj1).add (new int[]{ri2, rj2});
+            }
+        }
         /**
          * 缩点
          */
@@ -68,47 +139,6 @@ public class Solution1632 {
             }
         }
         return res;
-    }
-
-    private void addEdges(int m, int n, int col) {
-        for (int i = 0; i < m; i++) {
-            Map<Integer, int[]> num2Index = new HashMap<> ();
-            for (int j = 0; j < n; j++) {
-                int num = matrix[i][j];
-                num2Index.put (num, new int[]{i, j});
-            }
-            List<Integer> sortedArray = new ArrayList<> (num2Index.keySet ());
-            Collections.sort (sortedArray);
-            for (int j = 1; j < sortedArray.size (); j++) {
-                int[] pre = num2Index.get (sortedArray.get (j - 1));
-                int[] cur = num2Index.get (sortedArray.get (j));
-                int i1 = pre[0], j1 = pre[1], i2 = cur[0], j2 = pre[1];
-                int[] root1 = uf.find (i1, j1);
-                int[] root2 = uf.find (i2, j2);
-                int ri1 = root1[0], rj1 = root1[1], ri2 = root2[0], rj2 = root2[1];
-                degree[ri2][rj2]++;
-                adj.computeIfAbsent (ri1 * col + rj1, k -> new ArrayList<> ()).add (new int[]{ri2, rj2});
-            }
-        }
-    }
-
-    private void mergeIndex(int m, int n) {
-        for (int i = 0; i < m; i++) {
-            Map<Integer, List<int[]>> num2indexList = new HashMap<> ();
-            for (int j = 0; j < n; j++) {
-                int num = matrix[i][j];
-                num2indexList.computeIfAbsent (num, (k) -> new ArrayList<int[]> ()).add (new int[]{i, j});
-            }
-            for (List<int[]> indexList : num2indexList.values ()) {
-                int[] arr1 = indexList.get (0);
-                int i1 = arr1[0], j1 = arr1[1];
-                for (int j = 1; j < indexList.size (); j++) {
-                    int[] arr2 = indexList.get (j);
-                    int i2 = arr2[0], j2 = arr2[1];
-                    uf.union (i1, j1, i2, j2);
-                }
-            }
-        }
     }
 }
 
