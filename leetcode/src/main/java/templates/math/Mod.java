@@ -18,13 +18,13 @@ public class Mod {
         return x;
     }
 
-    int pow(int x, int y) {
-        int res = 1;
+    long pow(long x, long y) {
+        long res = 1;
         while (y > 0) {
             if ((y & 1) == 1) {
-                res *= x;
+                res = res * x % mod;
             }
-            x *= x;
+            x = x * x % mod;
             y >>= 1;
         }
         return res;
