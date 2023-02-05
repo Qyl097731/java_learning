@@ -11,7 +11,7 @@ import java.util.List;
  * @date 2023/2/4 23:34
  * @author: qyl
  */
-public class Solution6344 {
+public class Solution6304 {
     public int maxCount(int[] banned, int n, int maxSum) {
         int[] flag = new int[n + 1];
         for (int i = 0; i < banned.length; i++) {

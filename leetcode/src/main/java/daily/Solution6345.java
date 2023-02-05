@@ -1,27 +1,47 @@
 package daily;
 
-import org.junit.jupiter.api.Test;
+import java.util.*;
 
 /**
  * @description
- * @date 2023/2/4 23:34
+ * @date 2023/2/5 23:37
  * @author: qyl
  */
 public class Solution6345 {
-    public int maximizeWin(int[] prizePositions, int k) {
-        int n = prizePositions.length;
-        int[] pre = new int[n + 1];
-        int l = 0, res = 0;
-        for (int r = 0; r < n; r++) {
-            while (prizePositions[r] - prizePositions[l] > k) l++;
-            res = Math.max (res, r - l + 1 + pre[l]);
-            pre[r + 1] = Math.max (pre[r], r - l + 1);
+    public long minCost(int[] basket1, int[] basket2) {
+        long res = 0;
+        Map<Integer, Integer> count = new HashMap<> ();
+        for (int b : basket1) {
+            count.put (b, count.getOrDefault (b, 0) + 1);
+        }
+        for (int b : basket2) {
+            count.put (b, count.getOrDefault (b, 0) - 1);
+        }
+        int mn = Integer.MAX_VALUE;
+        List<Integer> list1 = new ArrayList<> (), list2 = new ArrayList<> ();
+        for (Map.Entry<Integer, Integer> entry : count.entrySet ()) {
+            int key = entry.getKey ();
+            mn = Math.min (mn, key);
+            int val = entry.getValue ();
+            if (val % 2 != 0) {
+                return -1;
+            } else {
+                val /= 2;
+                while (val < 0) {
+                    list1.add (key);
+                    val++;
+                }
+                while (val > 0) {
+                    list2.add (key);
+                    val--;
+                }
+            }
+        }
+        Collections.sort (list1);
+        Collections.sort (list2, (a, b) -> Integer.compare (b, a));
+        for (int i = 0; i < list1.size (); i++) {
+            res += Math.min (Math.min (list1.get (i), list2.get (i)), mn * 2);
         }
         return res;
-    }
-
-    @Test
-    public void test() {
-        System.out.println (maximizeWin (new int[]{18, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24}, 2));
     }
 }

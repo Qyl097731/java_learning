@@ -8,7 +8,7 @@ import java.util.List;
  * @date 2023/2/4 23:34
  * @author: qyl
  */
-public class Solution6343 {
+public class Solution6303 {
     List<Integer> res = new ArrayList<> ();
 
     public int[] separateDigits(int[] nums) {

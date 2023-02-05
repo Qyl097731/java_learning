@@ -4,31 +4,48 @@ import org.junit.jupiter.api.Test;
 
 /**
  * @description
- * @date 2023/2/5 0:27
+ * @date 2023/2/5 23:19
  * @author: qyl
  */
 public class Solution6346 {
-    int n, m;
-    int[][] g;
+    int n;
+    int[] dp;
+    int[] nums;
+    int k;
 
-    public boolean isPossibleToCutPath(int[][] grid) {
-        g = grid;
-        n = grid.length;
-        m = grid[0].length;
-        return !dfs (0, 0) || !dfs (0, 0);
+    public int minCapability(int[] nums, int k) {
+        n = nums.length;
+        int l = 0, r = (int) 1e9 + 5, mid = 0, res = 0;
+        this.k = k;
+        this.nums = nums;
+        dp = new int[n + 1];
+        while (l <= r) {
+            mid = (l + r) / 2;
+            if (check (mid)) {
+                r = mid - 1;
+                res = mid;
+            } else {
+                l = mid + 1;
+            }
+        }
+        return res;
     }
 
-    private boolean dfs(int x, int y) {
-        if (x == n - 1 && y == m - 1) {
-            return true;
+    private boolean check(int mid) {
+        dp[0] = 0;
+        dp[1] = nums[0] > mid ? 0 : 1;
+        for (int i = 1; i < n; i++) {
+            if (nums[i] > mid) {
+                dp[i + 1] = dp[i];
+            } else {
+                dp[i + 1] = Math.max (dp[i - 1] + 1, dp[i]);
+            }
         }
-        g[x][y] = 0;
-        return x + 1 < n && g[x + 1][y] == 1 && dfs (x + 1, y)
-                || y + 1 < m && g[x][y + 1] == 1 && dfs (x, y + 1);
+        return dp[n] >= k;
     }
 
     @Test
     public void test() {
-        isPossibleToCutPath (new int[][]{{1, 1, 1, 0, 0}, {1, 0, 1, 0, 0}, {1, 1, 1, 1, 1}, {0, 0, 1, 1, 1}, {0, 0, 1, 1, 1}});
+        minCapability (new int[]{2, 3, 5, 9}, 2);
     }
 }
