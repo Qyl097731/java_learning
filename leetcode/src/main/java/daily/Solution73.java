@@ -7,18 +7,19 @@ package daily;
  */
 public class Solution73 {
     public void setZeroes(int[][] matrix) {
-        long rowS = 0, colS = 0;
-        for (int i = 0; i < matrix.length; i++) {
-            for (int j = 0; j < matrix[0].length; j++) {
+        int n = matrix.length, m = matrix[0].length;
+        boolean[] zeroX = new boolean[n], zeroY = new boolean[m];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
                 if (matrix[i][j] == 0) {
-                    rowS |= (1L << i);
-                    colS |= (1L << j);
+                    zeroX[i] = true;
+                    zeroY[j] = true;
                 }
             }
         }
-        for (int i = 0; i < matrix.length; i++) {
-            for (int j = 0; j < matrix[0].length; j++) {
-                if ((rowS & (1L << i)) != 0 || (colS & (1L << j)) != 0) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (zeroX[i] || zeroY[j]) {
                     matrix[i][j] = 0;
                 }
             }
