@@ -2,10 +2,7 @@ package daily;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.IntStream;
 
 /**
@@ -17,12 +14,54 @@ public class Solution2250 {
     int[][] rec;
     int m;
 
-    int[] sum = new int[101];
+    int[] sum;
 
     public int[] countRectangles(int[][] rectangles, int[][] points) {
 //        return solve1(rectangles,points);
 //        return solve2 (rectangles, points);
-        return solve3 (rectangles, points);
+//        return solve3 (rectangles, points);
+        return solve4 (rectangles, points);
+    }
+
+    private int[] solve4(int[][] rectangles, int[][] points) {
+        m = rectangles.length;
+        int n = points.length;
+        int[] res = new int[n];
+        /**
+         * 离散x
+         */
+        TreeSet<Integer> set = new TreeSet<> ();
+        HashMap<Integer, Integer> map = new HashMap<> ();
+        for (int[] r : rectangles) {
+            set.add (r[0]);
+            set.add (r[1]);
+        }
+        for (int[] point : points) {
+            set.add (point[0]);
+            set.add (point[1]);
+        }
+        int id = 1;
+        for (Integer num : set) {
+            map.put (num, id++);
+        }
+        sum = new int[set.size () + 1];
+        /**
+         * 按照y排序
+         */
+        Integer[] ids = IntStream.range (0, n).boxed ().toArray (Integer[]::new);
+        Arrays.sort (rectangles, (a, b) -> b[1] - a[1]);
+        rec = rectangles;
+        Arrays.sort (ids, (i, j) -> points[j][1] - points[i][1]);
+        int i = 0;
+        for (int realId : ids) {
+            int[] p = points[realId];
+            while (i < m && map.get (rec[i][1]) >= map.get (p[1])) {
+                update (map.get (rec[i][0]));
+                i++;
+            }
+            res[realId] = i - query (map.get (p[0]) - 1);
+        }
+        return res;
     }
 
     private int[] solve3(int[][] rectangles, int[][] points) {
@@ -60,7 +99,7 @@ public class Solution2250 {
     }
 
     private void update(int x) {
-        while (x < 101) {
+        while (x < sum.length) {
             sum[x]++;
             x += lowbit (x);
         }
