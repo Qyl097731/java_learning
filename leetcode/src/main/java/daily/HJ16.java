@@ -25,30 +25,36 @@ public class HJ16 {
             string = reader.readLine ().split (" ");
             goodsArray[i] = new Goods (Integer.parseInt (string[0]), Integer.parseInt (string[1]), Integer.parseInt (string[2]));
             if (goodsArray[i].q == 0) {
-                appendix.put (goodsArray[i], new ArrayList<Goods> ());
+                appendix.put (goodsArray[i], new ArrayList<> ());
             }
         }
         for (int i = 0; i < m; i++) {
-            if (goodsArray[i].q > 0) {
-                List<Goods> goods = appendix.get (goodsArray[goodsArray[i].q - 1]);
-                goods.add (goodsArray[i]);
-                appendix.put (goodsArray[goodsArray[i].q - 1], goods);
+            Goods goods = goodsArray[i];
+            if (goods.q > 0) {
+                appendix.computeIfPresent (goodsArray[goods.q - 1],
+                        (k, v) -> {
+                            v.add (goods);
+                            return v;
+                        });
             }
         }
-
         int[] dp = new int[N + 1];
         for (Map.Entry<Goods, List<Goods>> entrySet : appendix.entrySet ()) {
             Goods mainGoods = entrySet.getKey ();
-            int zeroCost = mainGoods.v, totalCost = zeroCost, totalWeight = zeroCost * mainGoods.p;
-            for (int i = N; i >= zeroCost; i--) {
-                dp[i] = Math.max (dp[i - zeroCost] + zeroCost * mainGoods.p, dp[i]);
+            for (int i = N; i >= mainGoods.v; i--) {
+                int totalCost = mainGoods.v;
+                int totalWeight = mainGoods.w;
+                dp[i] = Math.max (dp[i - mainGoods.v] + mainGoods.w, dp[i]);
                 for (Goods sub : entrySet.getValue ()) {
-                    dp[i] = Math.max (dp[Math.max (0, i - zeroCost - sub.v)] + sub.v * sub.p + zeroCost * mainGoods.p, dp[i]);
+                    if (i - mainGoods.v - sub.v >= 0) {
+                        dp[i] = Math.max (dp[i - mainGoods.v - sub.v] + sub.w + mainGoods.w, dp[i]);
+                    }
                     totalCost += sub.v;
-                    totalWeight += sub.v * sub.p;
+                    totalWeight += sub.w;
                 }
-                dp[i] = Math.max (dp[Math.max (0, i - totalCost)] + totalWeight, dp[i]);
-                System.out.println (dp[i]);
+                if (i - totalCost >= 0) {
+                    dp[i] = Math.max (dp[i - totalCost] + totalWeight, dp[i]);
+                }
             }
         }
         System.out.println (dp[N]);
@@ -59,10 +65,22 @@ class Goods {
     int v;
     int p;
     int q;
+    int w;
 
     public Goods(int v, int p, int q) {
         this.v = v;
         this.p = p;
         this.q = q;
+        this.w = p * v;
+    }
+
+    @Override
+    public String toString() {
+        return "Goods{" +
+                "v=" + v +
+                ", p=" + p +
+                ", q=" + q +
+                ", w=" + w +
+                '}';
     }
 }
