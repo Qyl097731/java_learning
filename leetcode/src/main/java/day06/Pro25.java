@@ -2,8 +2,6 @@ package day06;
 
 import common.ListNode;
 
-import java.util.*;
-
 /**
  * @author qyl
  * @program Pro25.java
@@ -12,7 +10,7 @@ import java.util.*;
  */
 public class Pro25 {
     public static void main(String[] args) {
-        ListNode head = ListNode.createList(new int[]{1, 2, 3});
+        ListNode head = ListNode.createList (new int[]{1, 2, 3, 4, 5});
 
         ListNode.print(new Solution25().reverseKGroup(head,2));
     }
@@ -20,45 +18,35 @@ public class Pro25 {
 
 class Solution25 {
     public ListNode reverseKGroup(ListNode head, int k) {
-        List<Integer> list = createList(head);
-        int cnt = list.size()/k;
-        for (int i = 0; i < cnt; i++) {
-            Collections.reverse(list.subList(i*k,(i+1)*k));
-        }
-        Integer[] val = list.toArray(new Integer[0]);
-        return createList(val);
+        return reverseGroup (head, k)[0];
     }
 
-
-    public ListNode createList(Integer[] vals){
-        ListNode head = null;
-        for (int i = 0; i < vals.length; i++) {
-            head = insertNode(head,vals[i]);
+    ListNode[] reverseGroup(ListNode head, int k) {
+        int count = 1;
+        ListNode tail = head;
+        while (tail != null && count < k) {
+            tail = tail.next;
+            count++;
         }
-        return head;
+        if (tail == null) {
+            return new ListNode[]{head, null};
+        }
+        ListNode[] groups = reverseGroup (tail.next, k);
+
+        ListNode[] nodes = reverse (head, tail);
+        nodes[1].next = groups[0];
+        return new ListNode[]{nodes[0], groups[1]};
     }
 
-    public List<Integer> createList(ListNode head){
-        ArrayList<Integer> list = new ArrayList<>();
-        while (head != null){
-            list.add(head.val);
-            head = head.next;
+    ListNode[] reverse(ListNode head, ListNode tail) {
+        ListNode prev = head, cur = head.next;
+        while (prev != tail) {
+            ListNode next = cur.next;
+            cur.next = prev;
+            prev = cur;
+            cur = next;
         }
-        return list;
-    }
-
-    public ListNode insertNode(ListNode head,int val) {
-        ListNode node = new ListNode(val, null);
-        if (head == null) {
-            return head = node;
-
-        }
-        ListNode temp = head;
-        while (temp.next != null) {
-            temp = temp.next;
-        }
-        temp.next = node;
-        return head;
+        return new ListNode[]{tail, head};
     }
 
 }
