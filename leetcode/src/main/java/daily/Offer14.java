@@ -4,35 +4,35 @@ import org.junit.jupiter.api.Test;
 
 /**
  * @description
- * @date 2023/3/12 22:43
+ * @date 2023/3/17 21:54
  * @author: qyl
  */
 public class Offer14 {
-    int[] dp;
+    static final int MOD = (int) 1e9 + 7;
 
-    public int cuttingRope(int n) {
-        dp = new int[1 + n];
-        for (int i = 2; i <= n; i++) {
-            for (int j = 1; j < i; j++) {
-                dp[i] = Math.max (dp[i], Math.max (j * (i - j), j * dp[i - j]));
+    long quickPow(long n, long m) {
+        long res = 1;
+        while (m != 0) {
+            if ((m & 1) == 1) {
+                res = (res * n) % MOD;
             }
+            m >>= 1;
+            n = n * n % MOD;
         }
-        return dp[n];
+        return res;
     }
 
-    private int dfs(int left) {
-        if (dp[left] != -1) {
-            return dp[left];
+    public int cuttingRope(int n) {
+        if (n == 1 || n == 2) {
+            return 1;
         }
-        if (left != dp.length - 1) {
-            dp[left] = left;
+        if (n % 3 == 1) {
+            return (int) (quickPow (3, n / 3 - 1) * 4 % MOD);
+        } else if (n % 3 == 2) {
+            return (int) (quickPow (3, n / 3) * 2 % MOD);
         } else {
-            dp[left] = 1;
+            return (int) (quickPow (3, n / 3));
         }
-        for (int i = 1; i < left; i++) {
-            dp[left] = Math.max (dp[left], i * dfs (left - i));
-        }
-        return dp[left];
     }
 
     @Test
