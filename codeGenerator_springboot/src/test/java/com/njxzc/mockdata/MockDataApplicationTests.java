@@ -114,16 +114,15 @@ class MockDataApplicationTests {
 
     @Test
     void mockData() {
-        CompletableFuture[] mockFutures = IntStream.range (0, 700).boxed ().map (i ->
-                CompletableFuture.runAsync (() -> {
+        CompletableFuture<ArrayList<Order>>[] mockFutures = IntStream.range (0, 16).boxed ().map (i ->
+                CompletableFuture.supplyAsync (() -> {
                     ArrayList<Order> orderArrayList = new ArrayList<> ();
                     Snowflake uuidGenerator = new Snowflake ();
-                    String gid = uuidGenerator.nextIdStr ();
                     Integer importance = RandomUtil.randomInt (0, 5);
                     String goodsName = RandomUtil.randomString (5);
                     int status = RandomUtil.randomInt (0, 1);
                     Integer num = RandomUtil.randomInt ();
-                    int length = RandomUtil.randomInt (0, 1000);
+                    int length = RandomUtil.randomInt (0, 1000000);
                     for (int j = 0; j < length; j++) {
                         String id = uuidGenerator.nextIdStr ();
                         String address = RandomUtil.randomString (20);
@@ -138,8 +137,12 @@ class MockDataApplicationTests {
                     }
                     System.out.println ("finish " + i);
                     goodsService.save (new Goods (gid, importance, goodsName, num, status));
-                    orderService.saveBatch (orderArrayList, orderArrayList.size ());
+                    return orderArrayList;
                 }, ThreadPoolUtil.getExecutorService ())).toArray (CompletableFuture[]::new);
-        CompletableFuture.allOf (mockFutures).join ();
+        ArrayList<Order> orders = new ArrayList<> ();
+        for (CompletableFuture<ArrayList<Order>> mockFuture : mockFutures) {
+            orders.addAll (mockFuture.join ());
+        }
+        orderService.saveBatch (orders,5000);
     }
 }
