@@ -36,25 +36,38 @@ Innodb自适应哈希索引：如果发现某些索引值被使用非常频繁�
 
 ```mysql
 #法1.导致非常慢，且存储内容会非常大
-select id from url where url="http://www.mysql.com"
+select id
+from url
+where url = "http://www.mysql.com"
 
 #法2 用 哈希
 # 利用触发器创建hash，hash函数的选择尽量不要太过费时间且复杂
 DELIMITER //
-CREATE TRIGGER tablename_crc_ins BEFORE INSERT ON tablename FOR EACH ROW BEGIN SET NEW.url_crc=crc32(NEW.url)
+CREATE TRIGGER tablename_crc_ins
+    BEFORE INSERT
+    ON tablename
+    FOR EACH ROW
+BEGIN
+    SET NEW.url_crc = crc32(NEW.url)
 END;
 //
 
-CREATE TRIGGER tablename_crc_upd BEFORE UPDATE ON tablename FOR EACH ROW BEGIN SET NEW.url_crc=crc32(NEW.url)
-EDN;
-//
+CREATE TRIGGER tablename_crc_upd
+    BEFORE UPDATE
+    ON tablename
+    FOR EACH ROW
+BEGIN
+    SET NEW.url_crc = crc32(NEW.url)
+        EDN;
+    //
 DELIMITER;
 # and后面的语句必须存在为了防止hash冲突
-select id from url where url_crc=CRC32("http://www.mysql.com") and url="http://www.mysql.com" 
+select id
+from url
+where url_crc = CRC32("http://www.mysql.com")
+  and url = "http://www.mysql.com"
 
 ```
-
-
 
 #### 空间数据索引
 
@@ -98,32 +111,34 @@ TokuDB使用分形树索引
 
 ```mysql
 # 首先查询所有的 城市名字 前十名
-SELECT COUNT(*) AS cnt , city_name FROM city 
-GROUP BY city_name 
+SELECT COUNT(*) AS cnt, city_name
+FROM city
+GROUP BY city_name
 ORDER BY cnt DESC
 LIMIT 10
 # 法1 逐步查找合适的区分度
-SELECT COUNT(*) AS cnt , LEFT(city_name,3) AS prefix
+SELECT COUNT(*) AS cnt, LEFT(city_name, 3) AS prefix
 FROM city
-GROUP BY city_name 
+GROUP BY city_name
 ORDER BY cnt DESC
 LIMIT 10
 
-SELECT COUNT(*) AS cnt , LEFT(city_name,7) AS prefix
+SELECT COUNT(*) AS cnt, LEFT(city_name, 7) AS prefix
 FROM city
-GROUP BY city_name 
+GROUP BY city_name
 ORDER BY cnt DESC
 LIMIT 10
 
 # 法2 逐步计算不同前缀长度的选择性 相较于1 不精确
-SELECT COUNT(DISTINCT LEFT(city_name,3)/COUNT(1) AS sel3),
-COUNT(DISTINCT LEFT(city_name,4)/COUNT(1) AS sel4),
-COUNT(DISTINCT LEFT(city_name,5)/COUNT(1) AS sel5),
-COUNT(DISTINCT LEFT(city_name,6)/COUNT(1) AS sel6),
-COUNT(DISTINCT LEFT(city_name,7)/COUNT(1) AS sel7)
+SELECT COUNT(DISTINCT LEFT(city_name, 3) / COUNT(1) AS sel3),
+       COUNT(DISTINCT LEFT(city_name, 4) / COUNT(1) AS sel4),
+       COUNT(DISTINCT LEFT(city_name, 5) / COUNT(1) AS sel5),
+       COUNT(DISTINCT LEFT(city_name, 6) / COUNT(1) AS sel6),
+       COUNT(DISTINCT LEFT(city_name, 7) / COUNT(1) AS sel7)
 
 # 创建前缀索引
-ALTER TABLE CITY ADD KEY(city(7))
+ALTER TABLE CITY
+    ADD KEY (city(7))
 ```
 
 #### 案例
@@ -135,11 +150,20 @@ ALTER TABLE CITY ADD KEY(city(7))
 多个单列索引最后查询优化使用了索引合并不是一个好的操作，如
 
 ```mysql
-SELECT film_id , actor_id FROM film_actor WHERE actor_id = 1 OR film_id = 1
+SELECT film_id, actor_id
+FROM film_actor
+WHERE actor_id = 1
+   OR film_id = 1
 
 # 会被优化
-SELECT film_id , actor_id FROM film_actor WHERE actor_id = 1 UNION ALL
-SELECT film_id , actor_id FROM film_actor WHERE film_id = 1 AND actor_id <> 1
+SELECT film_id, actor_id
+FROM film_actor
+WHERE actor_id = 1
+UNION ALL
+SELECT film_id, actor_id
+FROM film_actor
+WHERE film_id = 1
+  AND actor_id <> 1
 ```
 
 AND 或者 OR 多个索引列的时候考虑 建立联合索引。
@@ -149,12 +173,14 @@ AND 或者 OR 多个索引列的时候考虑 建立联合索引。
 过滤性能高的放在左边,但是注意要所有group by ，order by中出现的字段，都是极度影响性能的。
 
 ```mysql
-SELECT COUNT(*) ,SUM(groupId = 10137), 
-SUM(userId = 1288826), SUM(anunymous = 0)
+SELECT COUNT(*),
+       SUM(groupId = 10137),
+       SUM(userId = 1288826),
+       SUM(anunymous = 0)
 FROM Message
 ```
 
-###  聚簇索引
+### 聚簇索引
 
 #### 优点
 
@@ -172,9 +198,9 @@ FROM Message
 
 - 主键是顺序的，每一条记录都存储在上一条记录的后面。当达到页的最大填充因子（默认15/16)后会插入新的数据页，最后数据页会被顺序填满。
 - 非顺序插入，因为存储的数据无序，要找到合适的位置进行插入，可能导致如下缺点
-  - 目标页不在内存，需要从磁盘加载到内存，导致大量IO
-  - 写入是乱序的，InnoDB不得不频繁页分裂，需要移动大量数据
-  - 频繁页分裂，导致页变得系数并且不规则，最终有碎片
+    - 目标页不在内存，需要从磁盘加载到内存，导致大量IO
+    - 写入是乱序的，InnoDB不得不频繁页分裂，需要移动大量数据
+    - 频繁页分裂，导致页变得稀疏并且不规则，最终有碎片
 
 > 顺序的主键在高并发的情况下，InnoDB按主键顺序插入可能造成明显的争用，对间隙锁竞争；同时可能造成AUTO_INCREMENT锁竞争。这时候需要考虑表重新设计或者更改innodb_autoinc_lock_mode配置。
 
@@ -190,12 +216,13 @@ FROM Message
 #### 延迟关联
 
 ```mysql
-SELECT * FROM products JOIN 
-(
-  SELECT prod_id 
-  FROM products
-  WHERE actor="ABC" AND title LIKE '%APOLLO%'
-) t1 ON (t1.prod_id=products.prod_id)
+SELECT *
+FROM products
+         JOIN
+     (SELECT prod_id
+      FROM products
+      WHERE actor = "ABC"
+        AND title LIKE '%APOLLO%') t1 ON (t1.prod_id = products.prod_id)
 ```
 
 先利用覆盖索引将少量prod_id查出来之后，在进行关联回表
@@ -204,32 +231,40 @@ SELECT * FROM products JOIN
 
 如果覆盖索引有序，则可以顺序查找且不需要回表，否则多次回表不如顺序全表扫描。
 
-> order by 需要满足最左前缀原则，多表连接进行order by的时候需要满足第一张表的最左前缀匹配，否则不嫩那个使用索引排序。除非where 或者 join字句对最左前缀的列指定了常量，然后紧接着后续的索引列进行order by
+> order by 需要满足最左前缀原则，多表连接进行order by的时候需要满足第一张表的最左前缀匹配，否则不嫩那个使用索引排序。除非where
+> 或者 join字句对最左前缀的列指定了常量，然后紧接着后续的索引列进行order by
 
 ```mysql
 # 联合索引 rental_date,inventory_id,customer_id
-SELECT rental_date , staff_id FROM rental 
+SELECT rental_date, staff_id
+FROM rental
 WHERE rental_date = '2005-05-25'
-ORDER BY inventory_id,customer_id
+ORDER BY inventory_id,
+         customer_id
 
 # 最左前缀多个等于条件 也能使用索引
-... WHERE rental_date = '2005-05-25' ADN inventory_id IN(1,2) ORDER BY customer_id
+             ... WHERE rental_date = '2005-05-25' ADN inventory_id IN(1,2)
+ORDER BY customer_id
 ```
 
 下面这个无法使用索引进行范围查找
+
 ```mysql
 # 索引列第一列用来范围查询
-... WHERE rental_date > '2005-05-25' ORDER BY inventory_id, customer_id;
+.
+.. WHERE rental_date > '2005-05-25' ORDER BY inventory_id, customer_id;
 ```
 
 ### 压缩（前缀压缩）索引
+
 MyISAM使用前缀压缩来减少索引的大小，在内存中存放更多的索引，以此提升性能。如perform，performance，那么performance会压缩成7,ance
 
 压缩虽然使用空间更少，但是查找时无法使用二分查找。如果IO密集型就会减少很多成本，但是如果是CPU密集型就会导致随机读浪费很多性能，倒序扫描尤其。
 
 删除冗余索引，可以减少修改时间。
 
-二级索引进行修改的时候需要注意，如二级索引A，其实存的是（A，ID），对于`WHERE A = 5 ORDER BY ID`能命中，但是变成（A，B）就变成（A，B，ID）了反而会变成文件排序了，不能利用索引了。
+二级索引进行修改的时候需要注意，如二级索引A，其实存的是（A，ID），对于`WHERE A = 5 ORDER BY ID`
+能命中，但是变成（A，B）就变成（A，B，ID）了反而会变成文件排序了，不能利用索引了。
 
 ### 未使用的索引
 
@@ -246,13 +281,22 @@ MyISAM使用前缀压缩来减少索引的大小，在内存中存放更多的�
 ```mysql
 SET AUTOCOMMIT = 0;
 BEGIN;
-SELECT actor_id FROM actor WHERE actor_id < 5 AND actor_id <> 1 FOR UPDATE 
+SELECT actor_id
+FROM actor
+WHERE actor_id < 5
+  AND actor_id <> 1 FOR
+UPDATE 
 ```
+
 上述语句会获取1-4之间的排他锁，返回后才会进行WHERE进一步过滤。如下的语句就会被挂起
+
 ```mysql
 SET AUTOCOMMIT = 0;
 BEGIN;
-SELECT actor_id FROM actor WHERE actor_id = 1 FOR UPDATE;
+SELECT actor_id
+FROM actor
+WHERE actor_id = 1 FOR
+UPDATE;
 ```
 
 InnoDb在二级索引使用读锁，主键索引使用写锁。消除了覆盖索引的可能性，使得SELECT FOR UPDATE 比 LOCK IN SHARE MODE 慢很多。
@@ -261,8 +305,11 @@ InnoDb在二级索引使用读锁，主键索引使用写锁。消除了覆盖�
 
 ### 支持多种过滤条件
 
-如sex、country虽然选择性不高，但是每次都会用到，所以创建(sex,country)作为前缀，虽然sex过滤性很差，但是可以通过`AND SEX IN('m','f')`来命中索引，并且不过滤任何行。
-应该考虑同时优化查询和索引来达到最佳平衡。尽可能将范围查询字段放在索引最后，因为范围查询后的字段不再匹配。并且用IN()来覆盖不再WHERE子句中的列，如果IN过多会导致组合暴增，降低性能。
+如sex、country虽然选择性不高，但是每次都会用到，所以创建(sex,country)
+作为前缀，虽然sex过滤性很差，但是可以通过`AND SEX IN('m','f')`来命中索引，并且不过滤任何行。
+应该考虑同时优化查询和索引来达到最佳平衡。尽可能将范围查询字段放在索引最后，因为范围查询后的字段不再匹配。并且用IN()
+来覆盖不再WHERE子句中的列，如果IN过多会导致组合暴增，降低性能。
+
 ```mysql
 # 优化器会变成4 * 3 * 22 = 24种组合
 WHERE eye_color     IN('brown','blue','hazel')
@@ -274,21 +321,28 @@ AND   sex           IN('M','F')
 
 ```mysql
 # 翻页到很后面会非常慢，会花费大量实践去扫描需要丢弃的数据
-SELECT <clos> FROM profiles WHERE sex='M' ORDER BY rating LIMIT 1000000,10
+SELECT <clos>
+FROM profiles
+WHERE sex='M'
+ORDER BY rating
+LIMIT 1000000,10
 ```
+
 可以通过反范式或者预先缓存计算解决这个问题，也可以延迟关联，利用覆盖索引只返回主键，再根据主键获得需要的行。
 
 ```mysql
 # 索引 (sex,rating) 默认带了id
-SELECT <cols> FROM profiles INNER JOIN(
+SELECT <cols>
+FROM profiles INNER JOIN (
     SELECT id from profiles
-    WHERE x.sex='M' ORDER BY rating LIMIT 1000000,10
-  ) AS x using(id)
+    WHERE x.sex='M' ORDER BY rating LIMIT 1000000, 10
+    ) AS x using (id)
 ```
 
 ## 维护索引和表
 
 创建表并建立索引还需要维护表和索引
+
 - 找到并修复损坏的表
 - 维护准确的索引统计信息
 - 减少碎片
@@ -299,13 +353,15 @@ SELECT <cols> FROM profiles INNER JOIN(
 `check table` 来检查是否表损坏。`repair table` 来修复损坏的表。
 <img src="./images/1679931827833.jpg">
 <img src="./images/1679931901860.jpg">
+
 ### 更新索引统计信息
 
 可以通过两个API来了解存储引擎的索引分布信息，决定如何使用索引
+
 - records_in_range() 来判断这个范围有多少记录。
 - info() 返回各种类型数据，包括索引的基数（每个键有多少记录）
-存储引擎向优化器提供的扫描行数如果不准确或者执行计划太复杂以至于无法准确获取各个阶段的行数，那么会使用索引统计信息来估算扫描的行数，优化器就是基于需要扫描的行数进行优化的。
-可以通过ANALYZE TABLE 来重新生成统计信息解决这个问题。不同引擎运行的成本也不同
+  存储引擎向优化器提供的扫描行数如果不准确或者执行计划太复杂以至于无法准确获取各个阶段的行数，那么会使用索引统计信息来估算扫描的行数，优化器就是基于需要扫描的行数进行优化的。
+  可以通过ANALYZE TABLE 来重新生成统计信息解决这个问题。不同引擎运行的成本也不同
 - Memory 不存储索引统计信息
 - MyISAM存在磁盘，全表扫描会锁表
 - InnoDB随机索引访问进行评估并存储在内存中
@@ -318,5 +374,36 @@ SELECT <cols> FROM profiles INNER JOIN(
 # 查看索引的基数Cardinality
 SHOW INDEX FROM t_order
 ```
+
 <img src="./images/1679931316859.jpg">
+
+像Percona版本已经可以使用系统表来持久化索引统计信息，防止启动时进行收集
+
+### 减少索引和数据的碎片
+
+碎片化的索引可能会很差或者无序的方式存在磁盘上，降低查询效率；B-Tree需要随机磁盘访问才能定位叶子页，所以随机访问是不可避免的，如果叶子页物理上顺序且紧密，那么查询性能会更好，否则对于范围查询、索引覆盖扫描效率会下降；
+
+表数据碎片化更加复杂
+- 行碎片
+数据行被存储在多个地方的多个片段中，即使只访问一行记录，行碎片浪费很多寻址时间
+- 行间碎片
+逻辑上顺序存储，但是在磁盘上不是顺序存储，如果无序会导致浪费很多寻址时间
+- 剩余空间碎片
+数据页有大量空余空间，导致磁盘数据读到内存浪费很多内存
+
+InnoDB不会发生第三种，会进行移动重写。
+
+可以通过OPTIMIZE TABLE 或者 ALTER TABLE tablename ENGINE=enginename 进行优化。
+
+percona的XtraBackup有个--stats以非备份方式运行，只是打印索引和表的统计情况，包括页中的数据量和空余空间，来确定碎片化程度。
+
+需要判断是否数据是稳定的，否则压缩之后坑你导致页分裂重组，反而降低性能。
+
+## 总结
+
+1. 单行访问很慢，主要是太多次IO，尽量读取块数据，且包含多行数据的块
+2. 按顺序访问很快：不需要多次磁盘寻道，比随机访问块；按顺序读取不需要额外的排序（order by、 group by）
+3. 索引覆盖可以减少回表，减少IO
+
+判断索引合理与否：按照响应时间进行分析，找出时间最长、造成最大压力的查询，检查schema、SQL和索引结构，判断是否扫描了太多的行，是否做了额外的排序或者用了临时表、是否使用随机IO、是否太多回表
 
