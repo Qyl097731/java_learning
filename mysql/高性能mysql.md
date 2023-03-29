@@ -550,7 +550,76 @@ MYSQL外部排序策略：
 
 - 新版本一次传输
 
-查询所需要的所有列，然后对这些列排序，最后直接返回排序结果
+查询所需要的所有列，然后对这些列排序，最后直接返回排序结果。但是单条数据很大可能导致更多的排序快需要合并。
+
+当查询的所有列总长度不超过参数max_length_for_sort_data时，可以使用”单词传输排序“
+
+关联查询需要排序的时候
+- 所有字段都是第一张表，那么直接关联处理前就进行文件排序 Using filesort
+- 否则会把关联数据放在临时表，关联结束后进行文件排序 Using temporary：Using filesort 
+即使有LIMIT也会先抛弃一部分数据后排好序。
+
+### 返回数据结果
+
+服务器将结果集返回客户端是一个增量、逐步返回的过程：服务器不需要存太多的结果，也能减少响应时间，尽快给客户端看到数据。
+
+结果集通过TCP传送，传输的时候可能中途就数据包进行缓存后进行批量传输。
+
+## MYSQL查询优化器的局限性
+
+### 关联子查询
+
+MYSQL的子查询实现非常糟糕，如WHERE……IN
+```mysql
+SELECT * FROM film
+WHERE film_id IN(SELECT film_id FROM file_actor WHERE actor_id = 1); 
+```
+被优化成:把所有的film_id全表扫描出来之后挨个去子查询，性能很差
+```mysql
+SELECT * FROM film
+WHERE EXISTS(SELECT * FROM film_actor WHERE actor_id = 1
+    AND film_actor.film_id = film.film_id)
+```
+
+### UNION限制
+
+主要是union的临时表中读取数据的时候，不一定有序，需要自己进行ORDER BY 和 LIMIT操作
+
+### 松散索引扫描
+
+MYSQL不支持，Oracle支持（跳表索引扫描）
+
+如存在索引(a,b)
+
+```mysql
+SELECT ... FROM tb1 WHERE b BETWEEN 2 AND 3
+```
+因为最左匹配不满足，显然就不能使用整个索引，只能通过全表扫描。如果通过调表如下所示，效率更高，不再需要where筛选
+
+<img src="./images/1680109718589.jpg/>
+
+不过MYSQL5.6之后，松散扫描索引的一些限制会通过”索引下推“解决。
+
+### 最大值和最小值优化
+
+```mysql
+SELECT MIN(actor_id) FROM actor WHERE first_name = 'PENELOPE'
+```
+理论上索引的最小值，在第一条数据被读取的时候就已经找到了，因为主键有序，但是MYSQL会进行全表扫描.
+
+可以通过LIMIT曲线救国，但是难以理解,以此减少扫描的行数
+
+```mysql
+SELECT actor_id FROM actor USE INDEX(PRIMARY)
+WHERE first_name = 'PENELOPE' LIMIT 1
+```
+
+
+
+
+
+
+
 
 
 
