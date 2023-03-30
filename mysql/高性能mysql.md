@@ -513,7 +513,7 @@ SELECT * FROM post WHERE post.id in(123,456,9098)
 数据结果排序
 - sending data
 响应数据或者生成结果集
-
+  
 可以通过查看Last_query_cost来知晓MYSQL的查询成本
 
 ```java
@@ -613,13 +613,191 @@ SELECT MIN(actor_id) FROM actor WHERE first_name = 'PENELOPE'
 SELECT actor_id FROM actor USE INDEX(PRIMARY)
 WHERE first_name = 'PENELOPE' LIMIT 1
 ```
+### 在同一个表上查询和更新
 
+MYSQL不允许对同一张表同时查询和更新。
 
+```mysql
+UPDATE tb1 AS outer_tb1
+    SET cnt = (
+        SELECT count(*) FROM tb1 AS inner_tb1
+        WHERE inner_tb1.type = outer_tb1.type
+      )
+```
 
+可以通过临时表来查询的时候更新，临时表在进行update之前就已经创建
 
+```mysql
+UPDATE tb1
+    INNER JOIN(
+        SELECT type, count(*) AS cnt
+        FROM tb1
+        GROUP BY type
+    ) AS der USING(tyoe)
+SET tb1.cnt = der.cnt
+```
 
+## 查询优化器的提示（hint)
 
+#### HIGH_PRIORITY 和 LOW_PRIORITY
+ 
+HIGH_PRIORITY用于Select、INSERT，把SELECT、INSERT放到所有语句最前面
 
+LOW_PRIORITY用于SELECT、INSERT、UPDATE、DELETE之中，只要有语句，就一直等待，饥饿问题。
+
+#### DELAYED
+
+对INSERT、REPLACE有效，会将该提示的语句理解返回，并将插入的行数放入缓冲区，一旦表空闲就写入。适用于数据大，但不需要等待完成。
+
+不是所有的都支持该函数
+
+#### STRAIGHT_JOIN
+
+SELECT前后，或者关联表之间。前者是让查询的表按照语句顺序进行关联，后者是固定前后两个表的关联顺序。
+
+在关联表过多，数据库优化的时间花很多，可以使用该函数减少优化时间。
+
+#### SQL_SMALL_RESULT 和 SQL_BIG_RESULT
+
+告诉SELECT在GROUP 和 DISTINCT如何使用临时表和排序。SQL_SMALL_RESULT将结果集放在内存中的索引临时表，避免排序；SQL_BIG_RESULT将结果在磁盘临时表排序
+
+#### SQL_BUFFER_RESULT
+将结果放入临时表，趁块释放表锁，无所耗费太多内存。
+
+#### SQL_CHCHE 和 SQL_BO_CACHE
+
+结果集是否缓存起来
+
+#### FOR UPDATE 和 LOCK IN SHARE MODE
+
+尽量别乱用 
+
+#### USE INDEX、IGNORE INDEX 和 FORCE INDEX
+
+强制使用索引，如保证数据有序返回
+
+optimizer_search_depth、optimizer_prune_level、optimizer_switch ：控制琼剧深度、是否跳过某些执行计划、控制禁用索引合并
+
+## 优化特定类型的查询
+
+### 优化COUNT()查询
+
+count(列)统计指定列非NULL的行数，
+
+如下经典优化
+```mysql
+select count(*) from city where id > 5
+
+# 可以只扫描5行，同时前者是const级别
+select (select count(*) from city) - count(*) from city where id <= 5
+```
+
+```mysql
+# 统计多种颜色
+select sum(if(color='blue',1,0)) as blue , sum(if(color='red',1,0)) as red from items
+
+select sum(color='blue') as blue , sum(color='red') as red from items
+
+select count(color='blue' or null) as blue,count(color='red' or null) as red from items
+```
+
+#### 使用近似值
+
+跟EXPLAIN一样，不需要真正执行，而是直接估计大概需要的行数。在不需要精确数量的场景，可以使用近似值，如在线有多少人(本来需要很多的条件)，这里不进行这些特殊约束进行筛出，就能进一步提升性能，只是略微不精确。
+
+#### 更复杂的优化
+
+可以通过覆盖索引减少回表、或者增加汇总表或者类似的Memcached的外部缓存，进一步加速。但是快速、精确和实现简单，三者永远只能满足两个。
+
+### 优化关联查询
+
+- 确保ON 或者 USING列上有索引，一般都只要在关联的第二张表建立索引
+- 确保任何的GROUP BY 和 ORDER BY都只涉及到一个表中的列，以此使用索引
+
+### 优化子查询
+
+尽量使用关联而不是子查询
+
+### 优化GROUP BY 和 DISTINCT
+
+尽量使用索引。
+
+GROUP BY 会通过：临时表或者文件排序来分组，尽量使用唯一性高、最好是索引进行分组。
+
+```mysql
+SELECT first_name,last_name,count(*)
+FROM actor
+INNER JOIN actor using(actor_id)
+group by first_name, last_name
+
+# 优化,但是可能最后索引列变化，对应关系一变动就会查询出现错误结果，后面已经通过ONLY_FULL_GROUP_BY进行避免，就是需要将分组的字段返回
+SELECT first_name,last_name,count(*)
+FROM actor
+INNER JOIN actor using(actor_id)
+GROUP BY actor_id
+```
+
+#### 优化 GROUP BY WITH ROLLUP
+
+分组结果再做一次超级聚合，可以使用WITH ROLLUP来实现这种逻辑，但是最好在应用程序中处理。
+
+### 优化LIMIT分页
+
+MYSQL 在 LIMIT 10000,20的时候会查询10020条记录但是只返回20条，其他的10000都会被抛弃，代价很高。
+
+可以通过限制页数进行优化、或者延迟关联进行优化
+```mysql
+SELECT id,description
+FROM file
+INNER JOIN (SELECT id FROM film ORDER BY title LIMIT 1000,10) AS lim USING(id)
+```
+
+LIMIT 和 OFFSET其实是OFFSET的问题，导致大量行被丢弃。可以使用书签记录上次获取数据的位置，下次直接翻页，避免OFFSET，主键需要单调增长
+```mysql
+# 返回16049 - 16030
+SELECT * FROM rental ORDER BY id DESC LIMIT 20
+
+SELECT * FROM rental 
+WHERE id < 16030         
+ORDER BY id DESC LIMIT 20
+```
+
+### 优化SQL_CALC_FOUND_ROWS
+
+会把所有的满足的行数都扫一遍统计行数，来获取总页数，而不是LIMIT行数就中止，所以代价可能很高。
+
+如 缓存1000条数据，后面的数据再查询
+
+### 优化UNION
+
+为了让优化器进行优化，需要把WHERE ORDER LIMIT都下推到UNION中，会导致很冗余。
+
+尽量使用UNION ALL，因为UNION会默认使用DISTINCT，代价很高，
+
+### 使用用户自定义变量
+
+不能使用自定义变量场景
+- 自定义变量，无法使用查询缓存
+- 不能再使用常量或者标识符的地方使用自定义变量，如表名、列名、LIMIt子句
+- 仅在一个连接中有效，不能做连接间通信
+- 连接池或者持久化连接，可能让毫无关系的代码发生交互
+- 自定义变量是一个动态类型
+- 复制的顺序和时间点不固定
+- 赋值符号优先级很低，建议明确括号
+- 不会产生语法错误，容易犯错
+
+#### 优化排名语句
+
+```mysql
+SET @curr_cnt := 0, @prev_cnt := 0, @rank := 0;
+SELECT id
+    @curr_cnt := cnt AS cnt,
+    @rank     := if(@prev_cnt <> @curr_cnt, @rank+1,@rank) AS rank,
+    @prev_cnt := @curr_cnt AS dummy
+FROM(
+
+  )
+```
 
 
 
