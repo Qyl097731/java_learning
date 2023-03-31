@@ -795,9 +795,145 @@ SELECT id
     @rank     := if(@prev_cnt <> @curr_cnt, @rank+1,@rank) AS rank,
     @prev_cnt := @curr_cnt AS dummy
 FROM(
-
-  )
+    SELECT id, count(*) AS cnt
+    FROM film_actor
+    GROUP BY actor_id
+    ORDER BY cnt DESC
+    LIMIT 10
+  ) as der;
 ```
+
+#### 避免重复查询刚刚更新的数据
+
+使用变量记录时间戳，下次访问不需要扫描表。但是两次网络来回是无法避免的
+
+```mysql
+UPDATE t1 SET lastUpdated = NOW() WHERE id = 1 AND @now := NOW();
+SELECT @now;
+```
+
+#### 统计更新和插入的数量
+
+使用INSERT ON DUPLICATE KEY UPDATE 的时候，想知道到底多少是更新操作，可以如下
+
+```mysql
+SET @x := 1;
+
+INSERT INTO t1(c1,c2) VALUES(4,4),(2,1),(3,1)
+ON DUPLICATE KEY UPDATE
+c1 = VALUES(c1) + (0 * (@x := @x + 1));
+
+SELECT @x;
+```
+
+#### 确定取值顺序
+
+WHERE 和 SELECT 执行的阶段不同，加入ORDER BY可能更不同
+
+```mysql
+SET @rownum := 0;
+
+# 先进行WHERE 后进行 赋值
+SELECT id , @rownum := @rownum + 1 AS cnt
+FROM actor
+WHERE @rownum <= 1;
+
+# ORDER BY 引入文件排序，而WHERE实在文件排序之前取值，所以会返回所有记录
+SELECT id ,@rownum := @rownum + 1 AS cnt
+FROM actor
+WHERE @rownum <= 1
+ORDER BY first_name
+
+# 修复方法：让赋值在WHERE的时候发生
+SELECT id,@rownum AS rownum
+FROM actor
+WHERE (@rownum := @rownum + 1) <= 1
+
+# 加入ORDER BY
+SELECT id,first_name,@rownum AS rownum
+FROM actor
+WHERE @rownum <= 1
+ORDER BY first_name,LEAST(0,@rownum := @rownum + 1)
+```
+
+> LEAST()函数可以在不改变排序的时候完成赋值,LEAST(0,@rownum := @rownum + 1)就是每次都返回0
+> 还有 GREATEST() LENGTH() ISNULL() NULLIF() IF() COALESCE()c都已
+
+#### 编写偷懒UNION
+
+UNION 包含两部分，一个子查询先执行，如果未命中再执行第二个分支。如热数据未找到就找冷数据，以此提高缓存命中率
+
+如长期未登录用户一张表作为冷数据，长期活跃的一张表热数据。
+
+```mysql
+# 此查询会每次都进行两张表遍历
+SELECT id FROM user WHERE id = 123
+UNION ALL
+SELECT id FROM user_archived WHERE id = 123;
+
+# 通过@found进行懒UNION
+SELECT GREATEST(@found := -1,id) AS id,'users' AS which_tb1
+FROM users WHERE id = 1
+UNION ALL
+    SELECT id, 'users_achived'
+    FROM users_archived WHERE id = 1 AND @found IS NULL
+UNION ALL
+    SELECT 1,'reset' FROM DUAL WHERE (@found := NULL) IS NOT NULL
+```
+
+#### 用户自定义变量的其他用处
+
+- 查询运行时计算总数和平均值
+- 模拟GROUP语句的函数FIRST() 和 LAST()
+- 对大量数据做数据计算
+- 计算一个大表的MD5散列值
+- 编写一个样本处理函数，当样本中的数值超过边界就会变为0
+- 模拟读/写游标
+- SHOW中WHERE加入变量值
+
+## 案例学习
+
+### 使用MYSQL构建一个对列表
+
+通过MYSQL实现队列表是一个取巧做法，高并发、高流量下系统表现不好。
+
+典型模式：一个表包含多种类型记录：未处理、已处理、待处理。一个或者多个线程在消费这些记录，声称正在处理，处理完成后，再将记录更新为已处理。
+如邮件发送、多命令处理、评论修改等。
+
+```mysql
+# SELECT FOR UPDATE的优化 不需要上锁直接进行批量更新
+UPDATE unsent_emails
+SET status = 'claimed', owner = CONNECTION_ID()
+WHERE owner = 0 AND status = 'unset'
+LIMIT 10
+
+SELECT id FROM unsent_emails
+WHERE owner = CONNECTION_ID() AND status = 'claimed'
+```
+
+尽量少轮询；尽量用UPDATE 代替SELECT FOR UPDATE,减少锁时间，将已经处理和未处理的数据分开，保证数据集大小。
+
+可以将任务队列从数据库迁移出去。Redis、memcached都能使用。以及各种消息队列都可以。
+
+### 计算两点之间距离
+
+两点之间的记录公式
+```mysql
+ACOS(COS(latA) * COS(latB) * COS(lonA - lonB) + SIN(latA) * SIN(latB)) * 地球半径
+```
+地球半径 3959 英里 或者 6371 千米。
+
+复杂计算可以考虑用近似值先过滤一大批数据。
+
+### 使用用户自定义函数
+
+3500万数据进行XOR计算，来知晓两个数值是否相匹配，直接写好程序，以后台程序的方式运行在分布式服务器，假装是MYSQL完成
+
+也就是通过业务来进行转换，避免技术难点。
+
+
+
+
 
 
 
