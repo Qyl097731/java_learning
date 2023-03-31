@@ -93,15 +93,15 @@ TokuDB使用分形树索引
 
 - 非表达式一部分
 
-  ```mysql
-  SELECT actor_id FROM actor WHERE actor_id + 1 = 5;
-  ```
+```mysql
+SELECT actor_id FROM actor WHERE actor_id + 1 = 5;
+```
 
 - 非函数的参数
 
-  ```mysql
+```mysql
   SELECT …… FROM TO_DAYS(CURRENT_DATE) - TO_DAYS(date_col) <= 10
-  ```
+```
 
 ### 前缀索引和索引选择性
 
@@ -397,7 +397,7 @@ InnoDB不会发生第三种，会进行移动重写。
 
 percona的XtraBackup有个--stats以非备份方式运行，只是打印索引和表的统计情况，包括页中的数据量和空余空间，来确定碎片化程度。
 
-需要判断是否数据是稳定的，否则压缩之后坑你导致页分裂重组，反而降低性能。
+需要判断是否数据是稳定的，否则压缩之后导致页分裂重组，反而降低性能。
 
 ## 总结
 
@@ -930,6 +930,163 @@ ACOS(COS(latA) * COS(latB) * COS(lonA - lonB) + SIN(latA) * SIN(latB)) * 地球�
 3500万数据进行XOR计算，来知晓两个数值是否相匹配，直接写好程序，以后台程序的方式运行在分布式服务器，假装是MYSQL完成
 
 也就是通过业务来进行转换，避免技术难点。
+
+# MYSQL高级特性
+
+## 分区表
+
+实现方式：对底层封装，索引也是按照分区的子表定义，没有全局索引，Oracle就可以定义索引和表是否进行分区。
+
+应用场景：
+- 表非常大无法全部放在内存，或者一部分是热点数据、其他是历史数据
+- 分区表的数据更容易维护，可以清楚一个分区数据实现批量删除，排错也更容易定位
+- 分区在不同的物理设备上，更高效利用硬件设备
+- 分区可以避免锁竞争
+- 备份和恢复独立分区
+
+限制：
+- 一个表最多1024个分区
+- 分区必须包含所有的主键和唯一索引
+- 分区表无法使用外键，
+
+### 分区表的原理
+
+通过句柄操作底层表，普通表和分区表从存储引擎角度看都一样。
+
+操作逻辑如下：
+- insert
+锁定所有底层表，确定哪个分区接手之后，再写入
+- update
+先锁住所有底层表，然后找到需要更新的记录的分区，读出并更新后，再判断数据应该放在哪个分区，最后再写入并删除原来的数据。
+- select
+先锁住所有底层表，然后优化器判断是否可以过滤部分分区，最后调用存储引擎接口访问各个分区数据。
+- delete
+锁住所有底层表，确定分区后，删除指定记录。
+
+### 分区表的类型
+
+分区表达式可以是列，也可以是列的表达式
+
+```mysql
+CREATE TABLE sales(
+    order_date DATETIME NOT NULL,
+    ……
+) ENGINE = InnoDB PARTITION BY RANGE(YEAR(order_date))(
+    PARTITION p_2010 VALUES LESS THAN (2010),
+    PARTITION p_2010 VALUES LESS THAN (2011),
+    PARTITION p_2010 VALUES LESS THAN (2012),
+    PARTITION p_catchall VALUES LESS THAN MAXVALUE );
+  )
+```
+
+### 如何使用分区表
+
+假如从一个非常大的表中查询一段时间的记录，表中包含了很多历史数据。如查询几个月数据，大概有10亿数据，
+
+方案：数据量巨大，肯定不能每次查询都扫全表。考虑索引维护的时间和空间的消耗，不希望使用索引。即使用了索引也会大量碎片，最终导致一个插叙导致很多随机IO，程序卡死。
+在数据量超大的时候，B+树无法起作用，除非使用覆盖索引，否则也会回表，导致随机IO，响应很慢。同时维护索引代价也非常高。所以可以使用分区，
+将数据放在分区内，之后定位分区之后进行全表扫描，并将热点分区进行缓存即可。
+
+### 什么情况有问题
+
+能够快速定位分区且分区本身不消耗很多。
+
+- NULL 导致分区过滤无效
+
+```mysql
+# 如果ORDER_DATE是null，那么会把所有null都放在一个独立分区
+PARTITION BY RANGE YEAR(order_date) 
+```
+
+当查询语句 WHERE order_date BETWEEN '2012-01-01' AND '2012-01-31'的时候就会导致 先去查 2012分区，在查找null分区。
+
+MYSQL5.5已经进行了可以 PARTITION BY RANGE COLUMNS(order_date)解决
+
+- 分区列和索引列不匹配
+
+如果定义的索引列和分区列不匹配，会导致无法进行分区过滤。
+
+- 选择分区成本可能很高
+
+在查找分区数据的时候，尤其是范围分区，服务器查找一批数据分别属于哪些分区，效率不高。建议分区不超过100个。
+
+键分区和哈希分区就没有这样的问题
+
+- 打开并锁住所有底层表的成本可能很高
+
+在过滤前需要锁住所有表是一种额外开销。 可以批量操作或者限制分区个数。
+
+- 维护分区的成本可能很高
+
+在重组分区或者ALERT的时候，需要把数据复制到临时分区后删除原分区。
+
+### 查询优化
+
+可以通过WHERE中加入分区列进行过滤分区，减少扫描的数据。
+
+`EXPLAIN PARTITION`可以观察是否执行了分区过滤。
+
+```mysql
+EXPLAIN PARTITIONS SELECT * FROM sales_by_day WHERE day > '2011-01-1'
+```
+
+分区列不管在分区的时候使用的是分区列本身还是分区列的函数，在WHERE过滤的时候都只能使用分区列本身，否则不起作用，跟索引一样。
+在表关联的时候，如果分区表是第二张表，那么优化器会只对这些匹配的分区中的行进行关联。
+
+### 合并表
+合并表和子表结构必须完全一致。子表主键的限制，合并表在全局上不受限制，会出现重复的键VALUE.
+
+```mysql
+CREATE TABLE t1(a INT NOT NULL PRIMARY KEY) ENGINE = MyISAM;
+CREATE TABLE t2(a INT NOT NULL PRIMARY KEY) ENGINE = MyISAM;
+INSERT INTO t1(a) VALUES(1),(2);
+INSERT INTO t2(a) VALUES(1),(2);
+CREATE TABLE mrg(a INT NOT NULL PRIMARY KEY) 
+    ENGINE = MyISAM UNION=(t1,t2) INSERT_METHOD = LAST;
+SELECT a FROM mrg;
+```
+往合并表插入的时候，最后会同步插入到LAST表中，也就是t2中。
+
+删除合并表，不会影响子表；但是删除子表，合并表如果不是打开着就会丢失一部分数据。
+
+查询的时候其实会在扫描所有子表，直到直到数据。
+
+- 一个MyISAM表可以是多个合并表的子表
+- 合并表中可以新添加子表，直接修改合并表就可以了
+- 可以合并表中只包含感兴趣的数据列，分区表不行
+- 可以使用myisampack来压缩所有表。
+- 对子表备份、恢复、修改和修复的时候，可以将子表从合并表删除，操作完成后再把子表添加回去。
+
+## 视图
+
+EXPLAIN的select_type 为 ”DERIVED“
+
+创建视图
+
+```mysql
+CREATE VIEW Oceania AS SELECT * FROM Country WHERE Continent = 'Oceania'
+WITH CHECK OPTION ;
+```
+
+### 可更新视图
+
+可更新视图：更新视图的时候更新视图涉及的相关表。如果视图定义中包含了GROUP BY 、UNION 、聚合函数、其他一些特殊情况，就不能被更新了。
+
+```mysql
+UPDATE Oceania SET population = population * 1.1 WHERE Name = 'Australia'
+```
+
+这里的WITH CHECK OPTION 使得更新和插入都要符合WHERE的限制，不能去变化Continent，
+
+### 视图对性能的影响
+
+
+
+
+
+
+# 操作系统和硬件优化
+
 
 
 
