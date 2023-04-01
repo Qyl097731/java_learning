@@ -298,3 +298,234 @@ slave_io_running是no或者connecting的时候，需要SHOW SLAVE STATUS\G查看
 
 需要开启防火墙端口。
 
+# ShardingSphere-JDBC读写分离
+
+利用上述的主从架构完成读写分离
+
+默认主库写，从库读。开启事务之后，为了保证主从库间的事务一致性，避免跨服务器的分布式事务，ShardingSphere-JDBC读写都用主库。
+
+> Junit 只要加了@Tranctional就会默认回滚，即使没有Rollback
+
+```properties
+# 应用名称
+spring.application.name=sharding-jdbc-demo
+# 开发环境设置
+spring.profiles.active=dev
+# 内存模式
+spring.shardingsphere.mode.type=Memory
+
+# 配置真实数据源
+spring.shardingsphere.datasource.names=master,slave1,slave2
+
+# 配置第 1 个数据源
+spring.shardingsphere.datasource.master.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.master.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.master.jdbc-url=jdbc:mysql://172.19.240.201:3306/db_test
+spring.shardingsphere.datasource.master.username=root
+spring.shardingsphere.datasource.master.password=123456
+
+# 配置第 2 个数据源
+spring.shardingsphere.datasource.slave1.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.slave1.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.slave1.jdbc-url=jdbc:mysql://172.19.240.201:3307/db_test
+spring.shardingsphere.datasource.slave1.username=root
+spring.shardingsphere.datasource.slave1.password=123456
+
+# 配置第 3 个数据源
+spring.shardingsphere.datasource.slave2.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.slave2.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.slave2.jdbc-url=jdbc:mysql://172.19.240.201:3308/db_test
+spring.shardingsphere.datasource.slave2.username=root
+spring.shardingsphere.datasource.slave2.password=123456
+
+# 读写分离类型，如: Static，Dynamic
+spring.shardingsphere.rules.readwrite-splitting.data-sources.myds.type=Static
+# 写数据源名称
+spring.shardingsphere.rules.readwrite-splitting.data-sources.myds.props.write-data-source-name=master
+# 读数据源名称，多个从数据源用逗号分隔
+spring.shardingsphere.rules.readwrite-splitting.data-sources.myds.props.read-data-source-names=slave1,slave2
+
+# 负载均衡算法名称
+spring.shardingsphere.rules.readwrite-splitting.data-sources.myds.load-balancer-name=alg_round
+
+# 负载均衡算法配置
+# 负载均衡算法类型
+spring.shardingsphere.rules.readwrite-splitting.load-balancers.alg_round.type=ROUND_ROBIN
+#spring.shardingsphere.rules.readwrite-splitting.load-balancers.alg_random.type=RANDOM
+#spring.shardingsphere.rules.readwrite-splitting.load-balancers.alg_weight.type=WEIGHT
+#spring.shardingsphere.rules.readwrite-splitting.load-balancers.alg_weight.props.slave1=1
+#spring.shardingsphere.rules.readwrite-splitting.load-balancers.alg_weight.props.slave2=2
+
+# 打印SQl
+spring.shardingsphere.props.sql-show=true
+```
+testLoadBalance、testTransactional、testInsert
+
+# ShardingSphere-JDBC垂直分片
+
+## 环境搭建
+
+```shll
+docker run -d \
+-p 3301:3306 \
+-v /software/mysql/user/conf:/etc/mysql/conf.d \
+-v /software/mysql/user/data:/var/lib/mysql   \
+-e MYSQL_ROOT_PASSWORD=123456   \
+--name mysql-user            \
+mysql:8.0.29
+
+docker exec -it mysql-user env LANG=C.UTF-8 /bin/bash
+
+CREATE DATABASE db_user;
+
+CREATE TABLE t_user(
+    id BIGINT AUTO_INCREMENT,
+    uname VARCHAR(30)
+);
+
+# 进行表以及数据库创建
+
+docker run -d \
+-p 3302:3306 \
+-v /software/mysql/order/conf:/etc/mysql/conf.d \
+-v /software/mysql/order/data:/var/lib/mysql   \
+-e MYSQL_ROOT_PASSWORD=123456   \
+--name mysql-order            \
+mysql:8.0.29
+
+docker exec -it mysql-order env LANG=C.UTF-8 /bin/bash
+
+CREATE DATABASE db_order;
+
+CREATE TABLE t_order(
+    id BIGINT AUTO_INCREMENT,
+    order_no VARCHAR(30),
+    user_id BIGINT,
+    amount DECIMAL(10,2),
+    PRIMARY KEY(id)
+);
+```
+
+## 测试
+
+```properties
+# 应用名称
+spring.application.name=sharding-jdbc-demo
+# 开发环境设置
+spring.profiles.active=dev
+# 内存模式
+spring.shardingsphere.mode.type=Memory
+
+# 配置真实数据源
+spring.shardingsphere.datasource.names=server-user,server-order
+
+# 配置第 1 个数据源
+spring.shardingsphere.datasource.server-user.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-user.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-user.jdbc-url=jdbc:mysql://172.19.240.201:3301/db_user
+spring.shardingsphere.datasource.server-user.username=root
+spring.shardingsphere.datasource.server-user.password=123456
+
+# 配置第 2 个数据源
+spring.shardingsphere.datasource.server-order.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order.jdbc-url=jdbc:mysql://172.19.240.201:3302/db_order
+spring.shardingsphere.datasource.server-order.username=root
+spring.shardingsphere.datasource.server-order.password=123456
+
+# 标准分片表配置（数据节点）
+# spring.shardingsphere.rules.sharding.tables.<table-name>.actual-data-nodes=值
+# 值由数据源名 + 表名组成，以小数点分隔。
+# <table-name>：逻辑表名
+spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=server-user.t_user
+spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=server-order.t_order
+
+# 打印SQl
+spring.shardingsphere.props.sql-show=true
+```
+
+testInsertOrderAndUser、testSelectFromOrderAndUser
+
+# ShardingSphere-JDBC水平分片
+
+<b> 水平分片主键需要在业务层进行控制，不能自增</b>
+
+```shell
+# 创建容器
+docker run -d \
+-p 3310:3306 \
+-v /software/mysql/order0/conf:/etc/mysql/conf.d \
+-v /software/mysql/order0/data:/var/lib/mysql   \
+-e MYSQL_ROOT_PASSWORD=123456   \
+--name mysql-order0            \
+mysql:8.0.29
+
+docker exec -it mysql-order0 env LANG=C.UTF-8 /bin/bash
+```
+
+```mysql
+CREATE DATABASE db_order;
+
+USE db_order;
+
+CREATE TABLE t_order0(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id BIGINT,
+    amount DECIMAL(10,2),
+    PRIMARY KEY(id)
+);
+  
+CREATE TABLE t_order1(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id BIGINT,
+    amount DECIMAL(10,2),
+    PRIMARY KEY(id)
+);
+```
+
+
+```shell
+docker run -d \
+-p 3311:3306 \
+-v /software/mysql/order1/conf:/etc/mysql/conf.d \
+-v /software/mysql/order1/data:/var/lib/mysql   \
+-e MYSQL_ROOT_PASSWORD=123456   \
+--name mysql-order1          \
+mysql:8.0.29
+
+docker exec -it mysql-order1 env LANG=C.UTF-8 /bin/bash
+```
+
+```mysql
+CREATE DATABASE db_order;
+
+USE db_order;
+
+CREATE TABLE t_order0(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id BIGINT,
+    amount DECIMAL(10,2),
+    PRIMARY KEY(id)
+);
+  
+CREATE TABLE t_order1(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id BIGINT,
+    amount DECIMAL(10,2),
+    PRIMARY KEY(id)
+);
+```
+
+> inline 表达式 ${begin..end} 表示范围区间 ， ${[unit1,unit2,unit_x]}枚举值
+
+testInsertOrder、testShardingSelectAll、testInsertOrderDatabaseStrategy、testShardingSelectByUserId
+
+分库分表之后查询的时候会使用union all
+<img src="./images/1680367126827.jpg">
+
+根据ID进行分片是考虑到经常可能会用id进行查询
+<img src="./images/1680368255438.jpg">
