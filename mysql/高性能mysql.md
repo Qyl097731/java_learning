@@ -1080,6 +1080,81 @@ UPDATE Oceania SET population = population * 1.1 WHERE Name = 'Australia'
 
 ### 视图对性能的影响
 
+- 可以使用视图在重构schema的时候不影响应用正常运行
+- 可以使用视图实现列的权限控制,不需要创建列权限。
+```mysql
+CREATE VIEW public.employeeinfo AS 
+    SELECT firstname,lastname   -- 不包括隐私信息
+    FROM private.emplyeeinfo;
+GRANT SELECT ON public.* TO public_user;
+```
+- 使用伪临时试图实现一些功能，在使用完毕之后删除即可。复用视图和处理子查询的代码路径完全不同，所以性能也不同。
+```mysql
+-- CONNECTION_ID()假设1234,防止出现视图的重复冲突
+CREATE VIEW temp.cost_per_day_1234 AS
+    SELECT DATE(ts) AS day,sum(cost) AS cost
+    FROM logs.cost
+    GROUP BY day;
+
+SELECT c.day, c.cost, s.sales
+FROM temp.cost_per_day_123 AS c 
+INNER JOIN sales.sales.sales_per_day AS a USING(day);
+
+# MYSQL先生成视图的SQL生成临时表，同时外层WHERE无法下推到到构建临时表的查询中，同时临时表也无法使用索引。
+SELECT c.day, c.cost, s.sales
+FROM temp..cost_per_day_1234 AS c
+INNER JOIN sales.sales_per_day AS s USING(day)
+WHERE day BETWEEN '2007-01-01' AND '2007-01-31'
+
+DROP VIEW temp.cost_per_day_1234;
+```
+
+### 视图的限制
+
+很难找到视图的原始创建语句.
+
+## 外键约束
+
+每次修改数据都要在另一张表多一次查找，即使另一张表有索引，如果过滤性很差，那么性能很差。
+
+如果要确保两个相关表始终有一致的数据或者相关数据的删除和更新上，外键比应用程序检查性能高的多。
+
+但是外键维护是逐行的，所以会比批量删除和更新要慢，
+
+外键约束使得查询需要额外访问一些表，需要额外的锁，如向子表写数据的时候，外键需要对父表上锁，检查父表，防止插入完成前，父记录被删除。
+
+<b>外键尽量别用，会带来额外消耗，尽量放在应用层进行控制。</b>
+
+## MYSQL内部存储代码
+
+触发器、存储过程、函数的形式存储代码。还可以用定时任务存放代码，称为事件。
+
+存储过程和存储函数都称为存储程序，能接收参数并返回返回值，但是触发器和事件却不行。
+
+优点： 服务器执行，离数据最近，节省带宽和网络延迟；代码重用；简化代码维护和版本更新；提升安全，更细粒度的权限控制；服务器端可以缓存存储过程的执行计划，降低消耗；部署、备份、维护都在服务器完成，方便。
+缺点：没有开发调试工具;较应用程序代码，存储代码效率差些;部署项目变复杂，需要额外部署存储代码；给数据库服务器增加额外压力，扩展性降低；存在安全隐患，只要攻破服务器就能泄露数据；存储过程中的错误可能导致服务器死机；
+
+### 触发器
+
+触发器在执行INSERT 、UPDATE、DELETE的时候，可以在Mysql指定是在SQL执行前还是执行后触发。可以简化应用逻辑，减少客户端和服务器的通信，以此提高性能。
+
+触发器可以保证数据一致性，但是不能保证原子性。因为行更新所以性能差，可能导致不能汇总表和缓存表的维护。
+
+- 一个事件一个触发器，不能在AFTER INSERT上定义两个触发器
+- 基于行触发，如果变更数据很多，效率很差
+- 触发器难排查问题
+- 如果关联更新，可能效率很差
+- 可能死锁和等待，触发器失败，原来的SQL也会失败。
+- MyISAM错误会抛出，但是不会回滚;InnoDB原操作和触发器是原子的，但是MVCC可能导致意外错误（通过触发器实现外键约束，BEFORE INSERT如果检查的时候没有上锁FOR UPDATE 可能最后并发更新，导致数据不一致)
+
+但是触发器实现一些约束、维护系统任务、更新反范式数据、使用触发器记录数据变更很有用
+
+### 事件
+
+定时对存储过程进行CALL
+
+可以通过INFORMATION_SCHEMA.EVENTS中看到各个事件状态，例如最后一次被执行的时间。
+
 
 
 
