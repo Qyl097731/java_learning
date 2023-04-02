@@ -33,11 +33,11 @@
         </dependency>
 
         <!--导入sharding依赖-->
-        <dependency>
-            <groupId>org.apache.shardingsphere</groupId>
-            <artifactId>shardingsphere-jdbc-core-spring-boot-starter</artifactId>
-            <version>5.1.1</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.apache.shardingsphere</groupId>-->
+<!--            <artifactId>shardingsphere-jdbc-core-spring-boot-starter</artifactId>-->
+<!--            <version>5.1.1</version>-->
+<!--        </dependency>-->
 
         <!--导入mysql依赖-->
         <dependency>

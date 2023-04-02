@@ -1,8 +1,6 @@
 package com.nju.sharding;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.IdWorker;
-import com.baomidou.mybatisplus.extension.conditions.query.QueryChainWrapper;
 import com.nju.sharding.domain.Dict;
 import com.nju.sharding.domain.Order;
 import com.nju.sharding.domain.OrderItem;
@@ -26,7 +24,7 @@ import java.util.List;
  * @date 2023/4/1 13:41
  * @author: qyl
  */
-public class UserServiceImplTest extends BaseTest{
+public class JdbcTest extends BaseTest{
 
     @Autowired
     private UserMapper userMapper;

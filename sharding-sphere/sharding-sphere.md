@@ -941,3 +941,291 @@ CREATE TABLE t_dict(
 );
 
 ```
+
+# ShardingSphere-Proxy读写分离
+
+## docker 安装
+
+```shell
+docker run -d \
+-v /software/server/proxy-a/conf:/opt/shardingsphere-proxy/conf \
+-v /software/server/proxy-a/ext-lib:/opt/shardingsphere-proxy/ext-lib \
+-e ES_JAVA_OPTS="-Xmx256m -Xms256m -Xmn128m" \
+-p 3320:3307 \
+--name server-proxy-a \
+apache/shardingsphere-proxy:5.1.1
+```
+
+> docker 无法远程连接：docker exec -it server-proxy-a env LANG=C.UTF-8 /bin/bash
+>                    cd /opt/shardingsphere-proxy/logs
+>                    tail -100f stdout.log
+> 后续启动可能容器内存不够，所以`-e ES_JAVA_OPTS="-Xmx256m -Xms256m -Xmn128m"`进行设置
+
+## 修改配置文件
+
+```shell
+# 配置服务器
+vim /software/server/proxy-a/conf/server.yaml
+
+rules:
+  - !AUTHORITY
+    users:
+      - root@%:root
+    provider:
+      type: ALL_PRIVILEGES_PERMITTED
+ 
+props:
+  sql-show: true
+  
+docker restart server-proxy-a
+```
+
+```shell
+# 配置读写分离
+vim /software/server/proxy-a/conf/config-readwrite-splitting.yaml
+
+schemaName: readwrite_splitting_db
+
+dataSources:
+  write_ds:
+    url: jdbc:mysql://172.19.240.201:3306/db_test?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+  read_ds_0:
+    url: jdbc:mysql://172.19.240.201:3307/db_test?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+  read_ds_1:
+    url: jdbc:mysql://172.19.240.201:3308/db_test?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+
+rules:
+- !READWRITE_SPLITTING
+  dataSources:
+    readwrite_ds:
+      type: Static
+      props:
+        write-data-source-name: write_ds
+        read-data-source-names: read_ds_0,read_ds_1
+
+docker restart server-proxy-a
+
+docker exec -it server-proxy-a env LANG=C.UTF-8 /bin/bash
+# 查看日志 
+tail -20f /opt/shardingsphere-proxy/logs/stdout.log
+```
+
+## 测试
+
+显然已经把库进行同步
+
+- 查询测试
+<img src="./images/1680439336349.jpg">
+
+- 插入测试
+<img src="./images/1680439409254.jpg">
+向写库写数据
+<img src="./images/1680439495269.jpg">
+
+## 应用程序实现
+
+```pom
+<!--导入sharding依赖-->
+<!--        <dependency>-->
+<!--            <groupId>org.apache.shardingsphere</groupId>-->
+<!--            <artifactId>shardingsphere-jdbc-core-spring-boot-starter</artifactId>-->
+<!--            <version>5.1.1</version>-->
+<!--        </dependency>-->
+```
+
+```properties
+# 应用名称
+spring.application.name=sharding-proxy-demo
+# 开发环境设置
+spring.profiles.active=dev
+
+#mysql数据库连接（proxy）
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url=jdbc:mysql://172.19.240.201:3320/readwrite_splitting_db?serverTimezone=GMT%2B8&useSSL=false
+spring.datasource.username=root
+spring.datasource.password=root
+
+#mybatis日志
+mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.stdout.StdOutImpl
+```
+
+testUserSelectAll
+
+# ShardingSphere-Proxy垂直分片
+
+## 配置
+```shell
+vi /software/server/proxy-a/conf/config-sharding.yaml
+
+schemaName: sharding_db
+
+dataSources:
+  ds_user:
+    url: jdbc:mysql://172.19.240.201:3301/db_user?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+  ds_order:
+    url: jdbc:mysql://172.19.240.201:3302/db_order?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+
+rules:
+- !SHARDING
+  tables:
+    t_user:
+      actualDataNodes: ds_user.t_user
+
+    t_order:
+      actualDataNodes: ds_order.t_order
+      
+      
+docker restart server-proxy-a
+# 查看日志 
+tail -20f /opt/shardingsphere-proxy/logs/stdout.log
+```
+
+## 测试同上不再演示
+
+# ShardingSphere-Proxy水平分片
+
+```shell
+docker start mysql-user
+docker start mysql-order0
+docker start mysql-order1
+
+# 修改配置
+vi /software/server/proxy-a/conf/config-sharding.yaml
+
+schemaName: sharding_db
+
+dataSources:
+  ds_user:
+    url: jdbc:mysql://172.19.240.201:3301/db_user?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+  ds_order0:
+    url: jdbc:mysql://172.19.240.201:3310/db_order?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+  ds_order1:
+    url: jdbc:mysql://172.19.240.201:3311/db_order?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+
+rules:
+- !SHARDING
+  tables:
+    t_user:
+      actualDataNodes: ds_user.t_user
+
+    t_order:
+      actualDataNodes: ds_order${0..1}.t_order${0..1}
+      tableStrategy:
+        standard:
+          shardingColumn: order_no
+          shardingAlgorithmName: alg_hash_mod
+      databaseStrategy:
+        standard:
+          shardingColumn: user_id
+          shardingAlgorithmName: alg_mod
+      keyGenerateStrategy:
+        column: id
+        keyGeneratorName: snowflake
+
+    t_order_item:
+      actualDataNodes: ds_order${0..1}.t_order_item${0..1}
+      tableStrategy:
+        standard:
+          shardingColumn: order_no
+          shardingAlgorithmName: alg_hash_mod
+      databaseStrategy:
+        standard:
+          shardingColumn: user_id
+          shardingAlgorithmName: alg_mod
+      keyGenerateStrategy:
+        column: id
+        keyGeneratorName: snowflake
+
+  bindingTables:
+    - t_order,t_order_item
+
+
+  broadcastTables:
+    - t_dict
+
+  shardingAlgorithms:
+    alg_mod:
+      type: MOD
+      props:
+        sharding-count: 2
+    alg_hash_mod:
+      type: HASH_MOD
+      props:
+        sharding-count: 2
+  
+  keyGenerators:
+    snowflake:
+      type: SNOWFLAKE
+
+
+docker restart server-proxy-a
+
+# 查看日志
+docker exec -it server-proxy-a env LANG=C.UTF-8 /bin/bash
+# 查看日志 
+tail -20f /opt/shardingsphere-proxy/logs/stdout.log
+```
+
+## 测试
+
+<img src="./images/1680442823152.jpg">
+
+日志如下
+
+<img src="./images/1680442874240.jpg">
