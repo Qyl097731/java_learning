@@ -3,8 +3,13 @@ package com.nju.sharding;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.conditions.query.QueryChainWrapper;
+import com.nju.sharding.domain.Dict;
 import com.nju.sharding.domain.Order;
+import com.nju.sharding.domain.OrderItem;
 import com.nju.sharding.domain.User;
+import com.nju.sharding.domain.vo.OrderVo;
+import com.nju.sharding.mapper.DictMapper;
+import com.nju.sharding.mapper.OrderItemMapper;
 import com.nju.sharding.mapper.OrderMapper;
 import com.nju.sharding.mapper.UserMapper;
 import org.junit.jupiter.api.Assertions;
@@ -28,6 +33,12 @@ public class UserServiceImplTest extends BaseTest{
 
     @Autowired
     private OrderMapper orderMapper;
+
+    @Autowired
+    private OrderItemMapper orderItemMapper;
+
+    @Autowired
+    private DictMapper dictMapper;
 
     /**
      * 读写分离
@@ -124,5 +135,75 @@ public class UserServiceImplTest extends BaseTest{
     @Test
     public void testShardingSelectByUserId(){
         System.out.println (orderMapper.selectList (new QueryWrapper<Order> ().eq ("user_id", 1L)));
+    }
+
+    @Test
+    public void deleteAll(){
+        orderMapper.delete (null);
+    }
+
+    /**
+     * 测试关联表插入
+     */
+    @Test
+    public void testInsertOrderAndOrderItem(){
+        for (int i = 1; i < 5; i++) {
+            Order order = new Order ();
+            order.setOrderNo ("nju" + i);
+            order.setUserId (1L);
+            orderMapper.insert (order);
+
+            for (int j = 0; j < 3; j++) {
+                OrderItem orderItem = new OrderItem ();
+                orderItem.setOrderNo ("nju" + i);
+                orderItem.setUserId (1L);
+                orderItem.setPrice (BigDecimal.valueOf (10));
+                orderItem.setCount (2);
+                orderItemMapper.insert (orderItem);
+            }
+        }
+
+        for (int i = 1; i < 5; i++) {
+            Order order = new Order ();
+            order.setOrderNo ("nju" + i);
+            order.setUserId (2L);
+            orderMapper.insert (order);
+
+            for (int j = 0; j < 3; j++) {
+                OrderItem orderItem = new OrderItem ();
+                orderItem.setOrderNo ("nju" + i);
+                orderItem.setUserId (2L);
+                orderItem.setPrice (BigDecimal.valueOf (10));
+                orderItem.setCount (2);
+                orderItemMapper.insert (orderItem);
+            }
+        }
+    }
+
+    /**
+     * 关联查询测试
+     */
+    @Test
+    public void testGetOrderAmount(){
+        List<OrderVo> orderVoList = orderMapper.getOrderAmount ();
+        orderVoList.forEach (System.out::println);
+    }
+
+    /**
+     * 广播表插入
+     */
+    @Test
+    public void testInsertBroadcast(){
+        Dict dict = new Dict ();
+        dict.setDictType ("type1");
+        dictMapper.insert (dict);
+    }
+
+    /**
+     * 广播表查询
+     */
+    @Test
+    public void testSelectBroadcast(){
+        System.out.println (dictMapper.selectList (null));
     }
 }

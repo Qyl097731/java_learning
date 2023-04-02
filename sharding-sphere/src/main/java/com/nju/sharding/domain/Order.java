@@ -19,8 +19,10 @@ public class Order implements Serializable {
     /**
      * 分布式ID
      */
-//    @TableId(value = "id", type = IdType.AUTO)
-    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    // 配置shardingsphere-jdbc分布式序列后，自动使用shardingsphere-jdbc的分布式序列
+    // 否则主键自增
+    @TableId(value = "id", type = IdType.AUTO)
+//    @TableId(value = "id", type = IdType.ASSIGN_ID) // 分布式id 默认
     private Long id;
 
     /**

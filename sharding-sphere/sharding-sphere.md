@@ -365,7 +365,7 @@ testLoadBalance、testTransactional、testInsert
 
 ## 环境搭建
 
-```shll
+```shell
 docker run -d \
 -p 3301:3306 \
 -v /software/mysql/user/conf:/etc/mysql/conf.d \
@@ -448,7 +448,7 @@ testInsertOrderAndUser、testSelectFromOrderAndUser
 
 # ShardingSphere-JDBC水平分片
 
-<b> 水平分片主键需要在业务层进行控制，不能自增</b>
+## 服务器准备
 
 ```shell
 # 创建容器
@@ -520,6 +520,97 @@ CREATE TABLE t_order1(
 );
 ```
 
+## 基本水平分片
+<b> 水平分片主键需要在业务层进行控制，不能自增</b>
+
+```properties
+# 应用名称
+spring.application.name=sharding-jdbc-demo
+# 开发环境设置
+spring.profiles.active=dev
+# 内存模式
+spring.shardingsphere.mode.type=Memory
+
+# 配置真实数据源
+spring.shardingsphere.datasource.names=server-user,server-order0,server-order1
+
+# 配置第 1 个数据源
+spring.shardingsphere.datasource.server-user.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-user.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-user.jdbc-url=jdbc:mysql://172.19.240.201:3301/db_user?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-user.username=root
+spring.shardingsphere.datasource.server-user.password=123456
+
+# 配置第 2 个数据源
+spring.shardingsphere.datasource.server-order0.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order0.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order0.jdbc-url=jdbc:mysql://172.19.240.201:3310/db_order?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-order0.username=root
+spring.shardingsphere.datasource.server-order0.password=123456
+
+# 配置第 3 个数据源
+spring.shardingsphere.datasource.server-order1.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order1.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order1.jdbc-url=jdbc:mysql://172.19.240.201:3311/db_order?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-order1.username=root
+spring.shardingsphere.datasource.server-order1.password=123456
+
+# 标准分片表配置（数据节点）
+# spring.shardingsphere.rules.sharding.tables.<table-name>.actual-data-nodes=值
+# 值由数据源名 + 表名组成，以小数点分隔。
+# <table-name>：逻辑表名
+spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=server-user.t_user
+spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=server-order$->{0..1}.t_order$->{0..1}
+
+#------------------------分库策略
+# 分片列名称 根据user_id进行分库
+spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-column=user_id
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-algorithm-name=alg_inline_userid
+
+#------------------------分片算法配置
+# 行表达式分片算法
+# 分片算法类型
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_inline_userid.type=INLINE
+# 分片算法属性配置 我们对user_id取模，如果为偶数 放入第一个数据源,如果为奇数 放入第二个数据源
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_inline_userid.props.algorithm-expression=server-order$->{user_id % 2}
+
+# 分片算法名称 取模分片算法 如果使用这个,就把上面的分配算法名称注释掉,和行表达式分片算法是一样的效果
+#spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-algorithm-name=alg_mod
+# 取模分片算法
+# 分片算法类型
+#spring.shardingsphere.rules.sharding.sharding-algorithms.alg_mod.type=MOD
+# 分片算法属性配置
+#spring.shardingsphere.rules.sharding.sharding-algorithms.alg_mod.props.sharding-count=2
+
+#------------------------分表策略
+# 分片列名称  按照订单编号去分表 哈希取模 一条在t_order0,一条在t_order1表
+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_no
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=alg_hash_mod
+
+#------------------------分片算法配置
+# 哈希取模分片算法
+# 分片算法类型
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_hash_mod.type=HASH_MOD
+# 分片算法属性配置
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_hash_mod.props.sharding-count=2
+
+#------------------------分布式序列策略配置
+# 分布式序列列名称 按照id生成雪花算法
+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=id
+# 分布式序列算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=alg_snowflake
+
+# 分布式序列算法配置
+# 分布式序列算法类型
+spring.shardingsphere.rules.sharding.key-generators.alg_snowflake.type=SNOWFLAKE
+
+# 打印SQl
+spring.shardingsphere.props.sql-show=true
+
+```
+
 > inline 表达式 ${begin..end} 表示范围区间 ， ${[unit1,unit2,unit_x]}枚举值
 
 testInsertOrder、testShardingSelectAll、testInsertOrderDatabaseStrategy、testShardingSelectByUserId
@@ -529,3 +620,324 @@ testInsertOrder、testShardingSelectAll、testInsertOrderDatabaseStrategy、test
 
 根据ID进行分片是考虑到经常可能会用id进行查询
 <img src="./images/1680368255438.jpg">
+
+## 多表关联
+
+尽量让相关联的表数据在同一个库，同一个服务器，防止跨服务器跨库影响性能。
+
+```mysql
+USE db_order;
+
+CREATE TABLE t_order_item0(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id  BIGINT,
+    price DECIMAL(10,2),
+    `count` INT,
+    primary key (id)
+);
+
+CREATE TABLE t_order_item1(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id  BIGINT,
+    price DECIMAL(10,2),
+    `count` INT,
+    primary key (id)
+);
+
+USE db_order1;
+
+CREATE TABLE t_order_item0(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id  BIGINT,
+    price DECIMAL(10,2),
+    `count` INT,
+    primary key (id)
+);
+
+CREATE TABLE t_order_item1(
+    id BIGINT,
+    order_no VARCHAR(30),
+    user_id  BIGINT,
+    price DECIMAL(10,2),
+    `count` INT,
+    primary key (id)
+);
+```
+
+```properties
+# 应用名称
+spring.application.name=sharding-jdbc-demo
+# 开发环境设置
+spring.profiles.active=dev
+# 内存模式
+spring.shardingsphere.mode.type=Memory
+
+# 配置真实数据源
+spring.shardingsphere.datasource.names=server-user,server-order0,server-order1
+
+# 配置第 1 个数据源
+spring.shardingsphere.datasource.server-user.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-user.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-user.jdbc-url=jdbc:mysql://172.19.240.201:3301/db_user?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-user.username=root
+spring.shardingsphere.datasource.server-user.password=123456
+
+# 配置第 2 个数据源
+spring.shardingsphere.datasource.server-order0.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order0.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order0.jdbc-url=jdbc:mysql://172.19.240.201:3310/db_order?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-order0.username=root
+spring.shardingsphere.datasource.server-order0.password=123456
+
+# 配置第 3 个数据源
+spring.shardingsphere.datasource.server-order1.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order1.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order1.jdbc-url=jdbc:mysql://172.19.240.201:3311/db_order?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-order1.username=root
+spring.shardingsphere.datasource.server-order1.password=123456
+
+# 标准分片表配置（数据节点）
+# spring.shardingsphere.rules.sharding.tables.<table-name>.actual-data-nodes=值
+# 值由数据源名 + 表名组成，以小数点分隔。
+# <table-name>：逻辑表名
+spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=server-user.t_user
+spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=server-order$->{0..1}.t_order$->{0..1}
+spring.shardingsphere.rules.sharding.tables.t_order_item.actual-data-nodes=server-order$->{0..1}.t_order_item$->{0..1}
+
+#------------------------分库策略
+# 分片列名称 根据user_id进行分库
+spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-column=user_id
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-algorithm-name=alg_inline_userid
+# 分片列名称 根据user_id进行分库
+spring.shardingsphere.rules.sharding.tables.t_order_item.database-strategy.standard.sharding-column=user_id
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order_item.database-strategy.standard.sharding-algorithm-name=alg_inline_userid
+
+
+
+#------------------------分片算法配置
+# 行表达式分片算法
+# 分片算法类型
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_inline_userid.type=INLINE
+# 分片算法属性配置 我们对user_id取模，如果为偶数 放入第一个数据源,如果为奇数 放入第二个数据源
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_inline_userid.props.algorithm-expression=server-order$->{user_id % 2}
+
+# 分片算法名称 取模分片算法 如果使用这个,就把上面的分配算法名称注释掉,和行表达式分片算法是一样的效果
+#spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-algorithm-name=alg_mod
+# 取模分片算法
+# 分片算法类型
+#spring.shardingsphere.rules.sharding.sharding-algorithms.alg_mod.type=MOD
+# 分片算法属性配置
+#spring.shardingsphere.rules.sharding.sharding-algorithms.alg_mod.props.sharding-count=2
+
+#------------------------分表策略
+# 分片列名称  按照订单编号去分表 哈希取模 一条在t_order0,一条在t_order1表
+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_no
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=alg_hash_mod
+# 分片列名称  按照订单编号去分表 哈希取模 一条在t_order0,一条在t_order1表
+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-column=order_no
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-algorithm-name=alg_hash_mod
+
+#------------------------分片算法配置
+# 哈希取模分片算法
+# 分片算法类型
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_hash_mod.type=HASH_MOD
+# 分片算法属性配置
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_hash_mod.props.sharding-count=2
+
+#------------------------分布式序列策略配置
+# 分布式序列列名称 按照id生成雪花算法
+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=id
+# 分布式序列算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=alg_snowflake
+# 分布式序列列名称 按照id生成雪花算法
+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.column=id
+# 分布式序列算法名称
+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.key-generator-name=alg_snowflake
+
+
+# 分布式序列算法配置
+# 分布式序列算法类型
+spring.shardingsphere.rules.sharding.key-generators.alg_snowflake.type=SNOWFLAKE
+
+# 打印SQl
+spring.shardingsphere.props.sql-show=true
+
+```
+
+testInsertOrderAndOrderItem
+
+## 绑定表
+
+- 创建VO对象
+
+```java
+@Data
+public class OrderVo {
+    private String orderNo;
+
+    private BigDecimal amount;
+}
+```
+
+- 添加Mapper
+
+数组的形式默认会用空格拼接
+```java
+@Select ({"SELECT o.order_no, sum(price * `count`) AS amount",
+        "FROM t_order o INNER JOIN t_order_item t on o.user_id = t.user_id",
+        "GROUP BY o.order_no"})
+List<OrderVo> getOrderAmount();
+```
+- 测试关联查询
+
+testGetOrderAmount 默认会进行多次笛卡尔积，即使使用了完全相同的分库分表规则，还是会全部进行笛卡尔积
+,显然多余了很多查询，性能差
+
+<img src="./images/1680426537426.jpg">
+
+- 配置绑定表
+
+```properties
+# 应用名称
+spring.application.name=sharding-jdbc-demo
+# 开发环境设置
+spring.profiles.active=dev
+# 内存模式
+spring.shardingsphere.mode.type=Memory
+
+# 配置真实数据源
+spring.shardingsphere.datasource.names=server-user,server-order0,server-order1
+
+# 配置第 1 个数据源
+spring.shardingsphere.datasource.server-user.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-user.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-user.jdbc-url=jdbc:mysql://172.19.240.201:3301/db_user?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-user.username=root
+spring.shardingsphere.datasource.server-user.password=123456
+
+# 配置第 2 个数据源
+spring.shardingsphere.datasource.server-order0.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order0.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order0.jdbc-url=jdbc:mysql://172.19.240.201:3310/db_order?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-order0.username=root
+spring.shardingsphere.datasource.server-order0.password=123456
+
+# 配置第 3 个数据源
+spring.shardingsphere.datasource.server-order1.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.server-order1.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.shardingsphere.datasource.server-order1.jdbc-url=jdbc:mysql://172.19.240.201:3311/db_order?useSSL=false&allowPublicKeyRetrieval=true
+spring.shardingsphere.datasource.server-order1.username=root
+spring.shardingsphere.datasource.server-order1.password=123456
+
+# 标准分片表配置（数据节点）
+# spring.shardingsphere.rules.sharding.tables.<table-name>.actual-data-nodes=值
+# 值由数据源名 + 表名组成，以小数点分隔。
+# <table-name>：逻辑表名
+spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=server-user.t_user
+spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=server-order$->{0..1}.t_order$->{0..1}
+spring.shardingsphere.rules.sharding.tables.t_order_item.actual-data-nodes=server-order$->{0..1}.t_order_item$->{0..1}
+
+#------------------------分库策略
+# 分片列名称 根据user_id进行分库
+spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-column=user_id
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-algorithm-name=alg_inline_userid
+# 分片列名称 根据user_id进行分库
+spring.shardingsphere.rules.sharding.tables.t_order_item.database-strategy.standard.sharding-column=user_id
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order_item.database-strategy.standard.sharding-algorithm-name=alg_inline_userid
+
+
+
+#------------------------分片算法配置
+# 行表达式分片算法
+# 分片算法类型
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_inline_userid.type=INLINE
+# 分片算法属性配置 我们对user_id取模，如果为偶数 放入第一个数据源,如果为奇数 放入第二个数据源
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_inline_userid.props.algorithm-expression=server-order$->{user_id % 2}
+
+# 分片算法名称 取模分片算法 如果使用这个,就把上面的分配算法名称注释掉,和行表达式分片算法是一样的效果
+#spring.shardingsphere.rules.sharding.tables.t_order.database-strategy.standard.sharding-algorithm-name=alg_mod
+# 取模分片算法
+# 分片算法类型
+#spring.shardingsphere.rules.sharding.sharding-algorithms.alg_mod.type=MOD
+# 分片算法属性配置
+#spring.shardingsphere.rules.sharding.sharding-algorithms.alg_mod.props.sharding-count=2
+
+#------------------------分表策略
+# 分片列名称  按照订单编号去分表 哈希取模 一条在t_order0,一条在t_order1表
+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_no
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=alg_hash_mod
+# 分片列名称  按照订单编号去分表 哈希取模 一条在t_order0,一条在t_order1表
+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-column=order_no
+# 分片算法名称
+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-algorithm-name=alg_hash_mod
+
+#------------------------分片算法配置
+# 哈希取模分片算法
+# 分片算法类型
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_hash_mod.type=HASH_MOD
+# 分片算法属性配置
+spring.shardingsphere.rules.sharding.sharding-algorithms.alg_hash_mod.props.sharding-count=2
+
+#------------------------分布式序列策略配置
+# 分布式序列列名称 按照id生成雪花算法
+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=id
+# 分布式序列算法名称
+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=alg_snowflake
+# 分布式序列列名称 按照id生成雪花算法
+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.column=id
+# 分布式序列算法名称
+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.key-generator-name=alg_snowflake
+
+
+# 分布式序列算法配置
+# 分布式序列算法类型
+spring.shardingsphere.rules.sharding.key-generators.alg_snowflake.type=SNOWFLAKE
+
+# 打印SQl
+spring.shardingsphere.props.sql-show=true
+
+#------------------------ 绑定表
+spring.shardingsphere.rules.sharding.binding-tables[0]=t_order,t_order_item
+```
+如果不配置绑定表：测试结果8条SQL；配置后只有4条SQL。
+
+> 绑定表：按照分片规则，对一组表进行绑定，需要提前对关联表进行统一的分片分库，同时必须使用分库键进行关联。
+
+## 广播表
+
+广播表就是在所有数据库都有这张表，并且数据都一样。适用于数据量不大且需要海量数据的表进行关联查询的场景，例如字典表
+
+- 插入、更新会实时在所有节点上执行，保持分片的数据一致性
+- 查询操作，只从一个节点获取
+- 可以跟任何一个表JOIN操作
+
+### 创建广播表
+
+```mysql
+USE db_order;
+
+CREATE TABLE t_dict(
+    id BIGINT,
+    dict_type VARCHAR(200),
+    PRIMARY KEY (id)
+);
+
+USE db_user;
+
+CREATE TABLE t_dict(
+    id BIGINT,
+    dict_type VARCHAR(200),
+    PRIMARY KEY (id)
+);
+
+```
