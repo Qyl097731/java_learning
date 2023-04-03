@@ -1155,9 +1155,32 @@ DROP VIEW temp.cost_per_day_1234;
 
 可以通过INFORMATION_SCHEMA.EVENTS中看到各个事件状态，例如最后一次被执行的时间。
 
+```mysql
+CREATE EVENT optimize_somedb ON SCHEDULE EVERY 1 WEEK 
+DO
+CALL optimize_tables('somedb')
+```
 
+可以指定主从机器之间是否进行事件的复制，同时如果一个定时任务执行时间很长，可能会影响后面任务的执行，有时候需要`GET_LOCK()`上锁。
 
+```mysql
+CREATE EVENT optimize_somedb ON SCHEDULE EVERY 1 WEEK 
+DO 
+BEGIN
+  DECLARE CONTINUE HANDLER FOR SQLEXCEPTION 
+      BEGIN END;
+  IF GET_LOCK('somedb',0) THEN
+    DO CALL optimize_tablse('somedb');
+  END IF;
+  DO RELEASE_LOCK('somedb');
+END;
+```
 
+DECLARE CONTINUE HANDLER FOR SQLEXCEPTION 为了能够让BEGIN END之间出现异常仍然能释放锁
+
+可以通过`SET GLOBAL event_scheduler := 1` 设置，让该线程执行各个用户指定的时间中的各段SQL代码，并通过MYSQL错误日志来观察运行情况。
+
+事件调度是单线程，但是事件是并行的
 
 
 # 操作系统和硬件优化
