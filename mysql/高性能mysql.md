@@ -1180,7 +1180,124 @@ DECLARE CONTINUE HANDLER FOR SQLEXCEPTION 为了能够让BEGIN END之间出现�
 
 可以通过`SET GLOBAL event_scheduler := 1` 设置，让该线程执行各个用户指定的时间中的各段SQL代码，并通过MYSQL错误日志来观察运行情况。
 
-事件调度是单线程，但是事件是并行的
+事件调度是单线程，但是事件是并行的,事件一旦结束，事件线程也会被销毁。
+
+存储过程中的注释需要通过版本注释进行添加，否则会被过滤，尽量使用大的版本号，这样就不会被执行、
+
+```mysql
+CREATE TRIGGER fake_statement_trigger
+BEFORE INSERT ON sometable
+FOR EACH ROW
+BEGIN DECLARE v_row_count INT DEFAULT ROW_COUNT();
+/*!99999 ROW_COUNT() is 1 except for the first row, so this executes
+    only once per statement */
+IF v_row_count <> 1 THEN
+  -- your code here
+END IF;
+END;
+```
+
+## 游标
+
+MYSQL在服务器端提供只读、单向的游标，只能在存储过程或者更底层的客户端API使用。
+
+游标指向的都是临时表而不是实际数据，所以总是只读的，可以逐行指向查询结果，然后让程序进一步处理。
+
+> 打开一个游标的时候，会执行整个查询。
+
+```mysql
+CREATE PROCEDURE bad_cursor()
+BEGIN
+  DECLARE film_id INT;
+  DECLARE f CURSOR FOR SELECT film_id FROM sakila.film;
+  OPEN f;
+  FETCH f INTO film_id;
+  CLOSE　ｆ;
+end;
+```
+
+因为事先生成临时表，所以即使只是使用一部分的结果集，可能都会带来很大的额外开销，同时可能造成很大的开销。
+
+
+## 绑定变量
+
+绑定变量SQL其实占位符SQL ： 
+
+```mysql
+INSERT INTO tb1(ol1,col2,col3) VALUES (?,?,?);
+```
+
+使用问好标记参数位置，之后执行查询的时候使用具体值进行替换。
+
+好处：
+- 服务器只需要解析一次SQL
+- 服务器端的优化器只需要执行一次，会缓存一部分执行计划
+- 以二进制的方式发送参数和句柄效率更高，支持分块，网络开销更小
+- MYSQL在存储参数的时候，不需要频繁复制，直接放入缓存
+- 减少了SQL注入风险
+
+### 绑定变量的优化
+
+绑定变量的SQL能缓存部分执行计划，当需要根据传入参数进行计算时，就不能缓存这部分执行计划。
+
+- 在准备阶段
+解析的时候，移除不可能的条件，并且重写子查询
+- 第一次执行的额时候
+简化嵌套循环，将外关联转化成内关联
+- 在每次SQL语句执行时
+  服务器会
+  - 过滤分区
+  - 尽量移除COUNT() 、 MIN() 、 MAX()
+  - 移除常数表达式
+  - 检测常量值
+  - 做必要的等值传播
+  - 分析和优化ref、range和索引优化等范文数据库的方法
+  - 优化关联顺序
+
+### SQL接口绑定变量
+
+```mysql
+SET @sql := 'SELECT actor_id, first_name, last_name FROM actor WHERE first_name = ?';
+
+PREPARE stm_fetch_actor FROM @sql;
+
+SET @actor_name := 'Penelope';
+
+EXECUTE stm_fetch_actor USIGN @actor_name;
+
+DEALLOCATE PREPARE stm_fetch_actor;
+```
+
+好处动态的SQL使得存储过程更加有优势
+
+```mysql
+DROP PROCEDURE IF EXISTS optimize_tables;
+DELIMITER //
+CREATE PROCEDURE optimize_tables(db_name VARCHAR(64))
+BEGIN 
+  DECLARE t VARCHAR(64);
+  DECLARE done INT DEFAULT 0;
+  DECLARE c CURSOR FOR 
+    SELECT table_name FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = db_name AND TABLE_TYPE = 'BASE TABLE';
+  DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done = 1;
+  OPEN c;
+  tables_loop: LOOP
+    FETCH c INTO t;
+    IF done THEN
+      LEAVE tables_loop;
+    end if //
+    SET @stmt_text := CONCAT("OPTIMIZE TABLE",db_name,".",t);
+    PREPARE stmt FROM @stmt_text;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  end loop //
+END //
+
+CALL optimize_tables('sakila')
+```
+
+SQL接口的绑定变量尽量只与存储变量一起使用，不然没什么好处。
 
 
 # 操作系统和硬件优化
