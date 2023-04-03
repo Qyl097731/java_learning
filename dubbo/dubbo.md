@@ -91,4 +91,23 @@ docker run -d -e TZ="Asia/Shanghai" -p 2181:2181 -v $PWD/data:/data --name zooke
 docker ps -a
 ```
 
+dubbo管理控制台安装
+- 压缩incubator-dubbo-ops-master.zip
 
+- 修改dubbo-admin的application.properties
+
+<img src="./images/1680528462356.jpg">
+
+- 打包
+
+mvn clean package
+
+- 启动
+
+java -jar dubbo-admin.jar
+
+- Springboot & Dubbo 快速启动
+
+> https://cn.dubbo.apache.org/zh-cn/overview/quickstart/
+
+dubbo-quick-start

@@ -1,0 +1,9 @@
+dubbo:
+  application:
+    name: user-service-provider
+
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    address: zookeeper://${zookeeper.address:172.19.240.201}:2181
