@@ -4,6 +4,7 @@ import com.nju.gmall.domain.UserAddress;
 import com.nju.gmall.service.OrderService;
 import com.nju.gmall.service.UserService;
 import org.apache.dubbo.config.annotation.DubboReference;
+import org.apache.dubbo.config.annotation.DubboService;
 
 import java.util.List;
 
@@ -12,6 +13,7 @@ import java.util.List;
  * @date 2023/4/4 0:10
  * @author: qyl
  */
+@DubboService
 public class OrderServiceImpl implements OrderService {
 
     @DubboReference
