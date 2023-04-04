@@ -1,6 +1,5 @@
 package com.nju.web.service.impl;
 
-import ch.qos.logback.core.util.TimeUtil;
 import com.nju.web.domain.Order;
 import com.nju.web.service.order.OrderService;
 import org.apache.dubbo.config.annotation.DubboService;
@@ -12,8 +11,8 @@ import java.util.UUID;
 /**
  * @author qyl
  */
-@DubboService(version = "1.0.0")
-public class OrderServiceImpl implements OrderService {
+@DubboService(version = "2.0.0")
+public class OrderServiceImplNew implements OrderService {
 
     @Override
     public Order createOrder() throws InterruptedException {

@@ -9,5 +9,5 @@ public interface OrderService {
     /**
      * 创建订单
      */
-    Order createOrder();
+    Order createOrder() throws InterruptedException;
 }

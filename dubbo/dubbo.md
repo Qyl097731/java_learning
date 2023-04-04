@@ -51,7 +51,9 @@ Remote Procedure Call 远程过程调用，是一种进程间通信方式。
 
 先通过容器启动，服务提供者注册到注册中心，消费者对注册中心进行订阅服务，如果服务提供者变更导致了注册中心发生了变更，那么注册中心会推送消费者。
 
-### 环境搭建
+# 入门
+
+##  环境搭建
 
 ```shell
 # 查看系统内核
@@ -163,3 +165,23 @@ public class ConsumerController {
 
 <img src="./images/1680596540451.jpg">
 
+
+## 参数解释
+
+
+```yaml
+# 消费者启动时检查是否存在服务提供者
+  consumer:
+    check: false
+
+# 指定消费者取消启动时检查
+  consumer:
+    interface: com.nju.gmall.XXXService
+    check: false
+    
+# 超时设置优先级 方法 > 接口 > 消费者全局 > 提供者全局
+  consumer:
+    timeout: 3500
+```
+
+到这里结束了，后续都可以通过官网进行测试，https://cn.dubbo.apache.org/zh-cn/overview/home/
