@@ -1,7 +1,7 @@
 package com.nju.gmall.service.impl;
 
-import com.nju.gmall.domain.UserAddress;
-import com.nju.gmall.service.UserService;
+import com.nju.gmall.domain.Address;
+import com.nju.gmall.service.UsersService;
 import org.apache.dubbo.config.annotation.DubboService;
 
 import java.util.Arrays;
@@ -13,11 +13,11 @@ import java.util.List;
  * @author: qyl
  */
 @DubboService
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UsersService {
     @Override
-    public List<UserAddress> getUserAddressList(String userId) {
-        UserAddress address1 = new UserAddress (1, "北京市", "1", "邱", "12345678910", "010");
-        UserAddress address2 = new UserAddress (2, "南京市", "1", "王武", "12345678910", "010");
+    public List<Address> getUserAddressList(String userId) {
+        Address address1 = new Address (1, "北京市", "1", "邱", "12345678910", "010");
+        Address address2 = new Address (2, "南京市", "1", "王武", "12345678910", "010");
 
         return Arrays.asList (address1,address2);
     }

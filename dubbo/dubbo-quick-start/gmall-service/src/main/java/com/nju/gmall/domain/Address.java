@@ -7,7 +7,7 @@ import java.io.Serializable;
  * @date 2023/4/3 23:44
  * @author: qyl
  */
-public class UserAddress implements Serializable {
+public class Address implements Serializable {
     private Integer id;
     private String userAddress;
     private String userId;
@@ -15,7 +15,7 @@ public class UserAddress implements Serializable {
     private String phone;
     private String isDefault;
 
-    public UserAddress(Integer id, String userAddress, String userId, String consignee, String phone, String isDefault) {
+    public Address(Integer id, String userAddress, String userId, String consignee, String phone, String isDefault) {
         this.id = id;
         this.userAddress = userAddress;
         this.userId = userId;

@@ -1,8 +1,8 @@
 package com.nju.gmall.service.impl;
 
-import com.nju.gmall.domain.UserAddress;
-import com.nju.gmall.service.OrderService;
-import com.nju.gmall.service.UserService;
+import com.nju.gmall.domain.Address;
+import com.nju.gmall.service.OrdersService;
+import com.nju.gmall.service.UsersService;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.dubbo.config.annotation.DubboService;
 
@@ -14,14 +14,14 @@ import java.util.List;
  * @author: qyl
  */
 @DubboService
-public class OrderServiceImpl implements OrderService {
+public class OrdersServiceImpl implements OrdersService {
 
     @DubboReference
-    UserService userService;
+    UsersService usersService;
     // 查询用户收获地址
     @Override
     public void initOrder(String userId) {
-        List<UserAddress> addressList = userService.getUserAddressList (userId);
+        List<Address> addressList = usersService.getUserAddressList (userId);
         System.out.println (addressList);
     }
 }

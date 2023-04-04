@@ -1,6 +1,7 @@
 package com.nju.gmall.service;
 
-import com.nju.gmall.domain.UserAddress;
+
+import com.nju.gmall.domain.Address;
 
 import java.util.List;
 
@@ -9,11 +10,11 @@ import java.util.List;
  * @date 2023/4/3 23:50
  * @author: qyl
  */
-public interface UserService {
+public interface UsersService {
     /**
      * 根据id返回订单信息
      * @param userId
      * @return
      */
-    List<UserAddress> getUserAddressList(String userId);
+    List<Address> getUserAddressList(String userId);
 }
