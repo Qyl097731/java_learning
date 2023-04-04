@@ -168,20 +168,197 @@ public class ConsumerController {
 
 ## 参数解释
 
+有三种进行配置的方式:
+- dubbo-starter 然后在 application.yaml 进行全局配置，或者 Reference或者Service上进行注解的配置
+
+- 通过dubbo.xml进行bean的配置
+
+- 通过注解Bean配置一个Config
+
+```java
+@Configuration
+public class MyDubboConfig {
+    @Bean
+    public XXXConfig xxxConfig(){
+    }
+}
+
+@EnableDubbo(scanBasePackageClasses = "com.nju.web")
+```
+
+### 消费者启动时检查是否存在服务提供者
 
 ```yaml
-# 消费者启动时检查是否存在服务提供者
   consumer:
     check: false
+```
 
+```yaml
 # 指定消费者取消启动时检查
   consumer:
     interface: com.nju.gmall.XXXService
     check: false
-    
-# 超时设置优先级 方法 > 接口 > 消费者全局 > 提供者全局
+```
+
+### 超时机制
+
+超时设置优先级 消费者 > 提供者 && 方法 > 接口 > 全局。
+
+```yaml
   consumer:
     timeout: 3500
 ```
 
+```java
+/**
+ * 指定方法
+ */
+@DubboReference(version = "1.0.0",parameters = {
+        "createOrder.timeout","2000"
+})
+private OrderService orderService;
+
+/**
+ * 指定接口
+ */
+@DubboService(version = "1.0.0",parameters = {
+        "timeout","3000"
+})
+public class OrderServiceImpl implements OrderService 
+
+```
+
+在同时设置了全局超时和接口全局的时候，以接口优先：
+
+<img src="./images/1680622079234.jpg">
+
+### 重试机制
+
+超时机制中，看服务提供者的控制台打印，默认是重试三次，这里进行重试次数设置。
+
+```yaml
+  consumer:
+    timeout: 3500
+    retries: 4
+```
+
+```java
+/**
+ * 指定方法
+ */
+@DubboReference(version = "1.0.0",parameters = {
+        "createOrder.timeout","2000",
+        "createOrder.retries","1"
+})
+private OrderService orderService;
+
+/**
+ * 指定接口
+ */
+@DubboService(version = "1.0.0",parameters = {
+        "retires","0",
+        "timeout","3000"
+})
+public class OrderServiceImpl implements OrderService 
+```
+查看服务提供者的控制台打印，重试2次，依旧是消费者 > 提供者 && 方法 > 接口 > 全局。
+
+### Version
+
+多版本可以实现灰度发布，先上线测试一部分的最新版本，平滑过度到最新版本。
+
+```java
+// 最新不超时版本
+@DubboService(version = "2.0.0")
+public class OrderServiceImplNew implements OrderService {
+
+    @Override
+    public Order createOrder() throws InterruptedException {
+        return new Order(UUID.randomUUID().toString().replace("-", ""),
+                UUID.randomUUID().toString().replace("-", ""),
+                BigDecimal.TEN,
+                "江苏省南京市",
+                LocalDateTime.now(),
+                LocalDateTime.now());
+    }
+}
+
+// 休眠超时版本
+/**
+ * 正常使用
+ */
+@DubboService(version = "1.0.0")
+public class OrderServiceImpl implements OrderService {
+
+  @Override
+  public Order createOrder() throws InterruptedException {
+    Thread.sleep(3000);
+    return new Order(UUID.randomUUID().toString().replace("-", ""),
+            UUID.randomUUID().toString().replace("-", ""),
+            BigDecimal.TEN,
+            "江苏省南京市",
+            LocalDateTime.now(),
+            LocalDateTime.now());
+  }
+}
+
+/**
+ * Version 多版本测试
+ */
+@DubboReference(parameters = {
+        "version","*"
+})
+```
+
+查看服务提供者的控制台打印，Version来回进行切换调用
+
+### 本地存根
+
+其实就是转发前通过代理进行功能加强
+```java
+    @DubboReference(parameters = {
+        "version", "2.0.0",
+        "stub", "com.nju.web.service.order.impl.OrderServiceStub"
+    })
+    private OrderService orderService;
+```
+
+```java
+public class OrderServiceStub implements OrderService {
+    private final OrderService orderService;
+
+    /**
+     * 默认传入远程服务
+     * @param orderService
+     */
+    public OrderServiceStub(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @Override
+    public Order createOrder() throws InterruptedException {
+        System.out.println ("代理开启");
+        return orderService.createOrder ();
+    }
+}
+```
+
+<img src="./images/1680624122265.jpg">
+
 到这里结束了，后续都可以通过官网进行测试，https://cn.dubbo.apache.org/zh-cn/overview/home/
+
+# 高可用
+
+注册中心不会转发，只是一个路由表的功能
+
+1. zookeeper与dubbo直连
+
+现象：Zookeeper注册中心宕机，还可以消费dubbo暴露的服务
+
+原因：健壮性
+1. 监控中心宕机之后能使用，只是丢失部分采样数据
+2. 数据库宕机，注册中心能通过缓存提供服务列表，但是不能注册新服务
+3. 注册中心集群，任意一台宕机，能自动切换到另一台；即使全部宕机，消费者和提供者能通过本地缓存通讯
+4. 服务提供者无状态，服务提供者宕机不影响使用
+5. 服务提供者全部宕机，那么无法在消费，直到恢复
+

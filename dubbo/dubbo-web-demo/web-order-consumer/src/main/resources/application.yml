@@ -12,5 +12,10 @@ dubbo:
     address: zookeeper://${zookeeper.address:172.19.240.201}:2181
 
 # 超时配置
-  consumer:
-    timeout: 3500
+#  consumer:
+#    timeout: 3500
+
+# 重试配置
+#  consumer:
+#    timeout: 3500
+#    retries: 4

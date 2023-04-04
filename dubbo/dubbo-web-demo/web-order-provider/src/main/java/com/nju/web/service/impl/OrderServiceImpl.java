@@ -12,6 +12,25 @@ import java.util.UUID;
 /**
  * @author qyl
  */
+
+/**
+ * 超时
+ */
+//@DubboService(version = "1.0.0",parameters = {
+//        "createOrder.timeout","3000"
+//})
+
+/**
+ * 重试
+ */
+//@DubboService(version = "1.0.0",parameters = {
+//        "createOrder.retires","0",
+//        "createOrder.timeout","3000"
+//})
+
+/**
+ * 正常使用
+ */
 @DubboService(version = "1.0.0")
 public class OrderServiceImpl implements OrderService {
 

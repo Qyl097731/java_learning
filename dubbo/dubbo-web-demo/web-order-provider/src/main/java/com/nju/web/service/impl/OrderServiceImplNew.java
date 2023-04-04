@@ -16,7 +16,6 @@ public class OrderServiceImplNew implements OrderService {
 
     @Override
     public Order createOrder() throws InterruptedException {
-        Thread.sleep(3000);
         return new Order(UUID.randomUUID().toString().replace("-", ""),
                 UUID.randomUUID().toString().replace("-", ""),
                 BigDecimal.TEN,
