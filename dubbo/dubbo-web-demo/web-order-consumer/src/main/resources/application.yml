@@ -1,0 +1,12 @@
+dubbo:
+  application:
+    name: web-order-consumer
+    qos-enable: true
+    qos-port: 33333
+    qos-accept-foreign-ip: false
+
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    address: zookeeper://${zookeeper.address:172.19.240.201}:2181

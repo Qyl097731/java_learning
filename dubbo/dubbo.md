@@ -110,7 +110,9 @@ java -jar dubbo-admin.jar
 
 > https://cn.dubbo.apache.org/zh-cn/overview/quickstart/
 
-dubbo-quick-start
+## 测试
+
+### dubbo-quick-start
 
 启动ProviderApplication之后，如下
 <img src="./images/1680572856875.jpg">
@@ -123,3 +125,41 @@ dubbo-quick-start
 <img src="./images/1680574668192.jpg">
 
 在之前的基础上多了一个对user-service-provider的消费者
+
+### dubbo-web-demo
+
+主要是对WEB端口测试
+
+增加ConsumerController， 其余都类似
+```java
+@RestController("consumer")
+public class ConsumerController {
+
+    @DubboReference
+    private OrderService orderService;
+
+    @GetMapping("getOrder")
+    public Order getOrder(){
+        return orderService.createOrder();
+    }
+}
+```
+
+- 启动服务提供者
+
+  发现已经注册成功
+<img src="./images/1680595021167.jpg">
+
+- 启动消费者
+
+  发现已经注册成功
+  <img src="./images/1680595131211.jpg">
+
+- 测试请求
+
+如果404 控制台报错如下： not support none serializable class com.nju.web.domain.Order
+
+需要把实体类进行序列化。
+
+<img src="./images/1680596540451.jpg">
+
