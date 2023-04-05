@@ -362,3 +362,166 @@ public class OrderServiceStub implements OrderService {
 4. 服务提供者无状态，服务提供者宕机不影响使用
 5. 服务提供者全部宕机，那么无法在消费，直到恢复
 
+## 集群下dubbo的负载均衡
+
+默认是random随机调用
+
+### 策略
+- Random(默认)
+
+按权重设置随机概率
+
+<img src="./images/1680706012713.jpg">
+
+- RoundRobin
+
+按权重的轮询负载均衡
+
+轮询过程中考虑权重，如果发现已经超过其概率次数，就往后继续寻找机器来提供服务
+
+<img src="./images/1680706110763.jpg">
+
+- LeastActive
+
+最少活跃调用（始终选择最快响应时间的机器）
+
+<img src="./images/1680706269646.jpg">
+
+- ConsistentHash
+
+始终按照hash映射到指定的服务器
+
+<img src="./images/1680706314144.jpg">
+
+### 测试
+
+```java
+    @DubboReference(loadbalance = "roundrobin",parameters = {
+            "version", "2.0.0"})
+    private OrderService orderService;
+```
+添加两行代码，观察控制台打印结果
+```java
+    public Order createOrder() throws InterruptedException {
+        System.out.println (2);
+
+    public Order createOrder() throws InterruptedException {
+        System.out.println (1);
+```
+启动两个相同的provider
+
+<img src="./images/1680707826260.jpg">
+<img src="./images/1680707930469.jpg">
+
+有1、2说明确实是轮询。
+
+调整随机的权重
+<img src="./images/1680708057995.jpg">
+
+## 服务降级
+
+当服务器压力剧增，可以对服务进行不处理或者简单处理，释放一些资源保证核心交易正常运作。
+
+设置熔断
+
+<img src="./images/1680708383988.jpg">
+
+<img src="./images/1680708700698.jpg">
+
+## 集群容错
+
+默认为failover
+
+### 模式类别
+
+#### failover
+
+失败就自动重试其他服务器。
+
+#### failfast
+
+快速失败，非幂等性的写，只进行一次调用，失败就报错
+
+#### failsafe
+
+出现异常，直接忽略，写入审计日志
+
+#### failback cluster
+
+失败自动回复，并且后台做错误记录，定时重发，用于消息通知。一般用于必须成功的请求
+
+#### forking cluster
+
+并行调用多个服务器，只要一个成功返回。实时性较高，但是资源会浪费，一般forks=2进行设置最大并行数
+
+#### Broadcast Cluster
+
+广播调用所有提供者，任意一台报错就保存。通常与通知所有提供者更新缓存或日志等本地资源，实现数据一致性
+
+### 整合Hystrix实现集群容错
+
+在提供者、消费者配置pom
+
+```xml
+    <dependency>
+          <groupId>org.springframework.cloud</groupId>
+          <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+      </dependency>
+```
+
+开启Hystrix
+
+```java
+@SpringBootApplication
+@EnableDubbo
+@EnableHystrix
+public class OrderProviderApplication
+
+@SpringBootApplication
+@EnableDubbo
+@EnableHystrix
+public class OrderConsumerApplication
+
+```
+
+配置容错方法和代码
+```java
+//OrderServiceImplNew  
+@Override
+@HystrixCommand
+public Order createOrder() throws InterruptedException {
+  return new Order(UUID.randomUUID().toString().replace("-", ""),
+          UUID.randomUUID().toString().replace("-", ""),
+          BigDecimal.TEN,
+          "江苏省南京市",
+          LocalDateTime.now(),
+          LocalDateTime.now());
+}
+
+//ConsumerController
+@GetMapping(value = "/createOrder")
+@HystrixCommand(fallbackMethod = "mockOrder")
+public Order createOrder() throws InterruptedException {
+  return orderService.createOrder ();
+}
+
+public Order mockOrder(){
+  return new Order(UUID.randomUUID().toString().replace("-", ""),
+          UUID.randomUUID().toString().replace("-", ""),
+          BigDecimal.TEN,
+          "mock",
+          LocalDateTime.now(),
+          LocalDateTime.now());
+}
+```
+
+## RPC原理
+
+<img src="./images/1680711474724.jpg">
+
+整体流程如下:
+1. client消费者首先一本地方法的形式调用服务
+2. client stub接收到之后将方法、参数等组装成能够进行网络传输的消息体，并找到服务地址，将消息发给服务端
+3. server stub进行解码,并根据解码结果调用本地服务
+4. 本地服务处理之后返回给server stub，server stub将结果打包并返回给消费方
+5. client stub接收到之后进行解码，消费者最后会的结果。
