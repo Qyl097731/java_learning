@@ -525,3 +525,7 @@ public Order mockOrder(){
 3. server stub进行解码,并根据解码结果调用本地服务
 4. 本地服务处理之后返回给server stub，server stub将结果打包并返回给消费方
 5. client stub接收到之后进行解码，消费者最后会的结果。
+
+<img src="./images/1680783958364.jpg">
+
+<img src="./images/1680785388167.jpg">
