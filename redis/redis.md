@@ -675,7 +675,7 @@ Flyweight模式：预分配一些常见对象，在多个数据结构之间共�
 
 创建的时候1，共享就+1，释放就-1，最后refcount=0就销毁整个redisObject
 
-## 字符串
+## 字符串 String
 
 除了GET、SET等命令的操作对象外，Redis中的所有Key以及执行命令时提供的参数，都是字符串类型的
 
@@ -683,3 +683,167 @@ Flyweight模式：预分配一些常见对象，在多个数据结构之间共�
 
 - REDIS_ENCODING_INT使用long来保存long类型值
 - REDIS_ENCODING_RAW用 sdshdr 保存sds、long long、double、long double类型值
+
+### 编码的选择
+
+字符串创建之后默认使用后者，但将保存到数据库的时候，会将字符串转化为前者。
+
+## 哈希表 HASH
+
+HSET、HLEN等命令的操作对象，使用REDIs_ENCODING_ZIPLIST和REDIS_ENCODING_HT两种编码方式
+
+### 字典编码的哈希表
+
+哈希表的key为字典的key，哈希表的值是字典的值；键、值都为字符串对象
+
+<img src="./images/1681103273264.jpg">
+
+### 压缩列表编码的哈希表
+
+将键值一起压入压缩列表，新添加的键值对会被添加到压缩列表表尾，查找、删除也是先定位key，再根据key定位值的位置。
+
+<img src="./images/1681103601435.jpg">
+
+### 编码选择
+
+默认是压缩表，若满足下列之一就会转换成REDIS_ENCODING_HT
+- 哈希表中的某个key或者value长度大于server.hash_max_ziplist_value（默认64）
+- 压缩列表中的节点数大于server.hash_max_ziplist_entries(默认512)
+
+## 列表 LIST
+
+REDIS_LIST是 LPUSH、LRANGE等命令的操作对象，使用ZIPLIST或者LINKEDLIST进行实现
+
+### 编码选择
+
+默认ZIPLIST，若满足下列之一就会转换成LINKEDLIST
+- 向列表添加字符串值，且字符串长度超过server.list_max_ziplist_value(默认64)
+- ziplist包含的节点超过server.list_max_ziplist_entries(默认512)
+
+### 阻塞的条件
+
+BLPOP、BRPOP、BRPOPLPUSH阻塞客户端，统称为阻塞原语。
+
+阻塞条件： 这些命令用于空列表
+
+### 阻塞
+
+阻塞的步骤
+1. 将客户端的状态设为“正在阻塞” ，并记录阻塞这个客户端的各个键，以及阻塞的最长时限
+   （timeout）等数据。
+2. 将客户端的信息记录到 server.db[i]->blocking_keys 中（其中 i 为客户端所使用的数
+   据库号码）。
+3. 继续维持客户端和服务器之间的网络连接，但不再向客户端传送任何信息，造成客户端
+   阻塞。
+
+server.db[i]->blocking_keys 是一个字典，字典的键是那 些造成客户端阻塞的键，而字典的值是一个链表，链表里保存了所有因为这个键而被阻塞的客
+户端（被同一个键所阻塞的客户端可能不止一个）：
+
+<img src="./images/1681104854068.jpg">
+
+脱离阻塞的方法：
+1. 被动脱离：有其他客户端为造成阻塞的键推入了新元素。
+2. 主动脱离：到达执行阻塞原语时设定的最大阻塞时间。
+3. 强制脱离：客户端强制终止和服务器的连接，或者服务器停机。
+
+### 被动脱离:lpush\rpush\linsert
+
+<img src="./images/1681105201900.jpg">
+
+当向一个空键推入新元素时，pushGenericCommand 函数执行以下两件事：
+1. 将 readyList 添加到服务器。
+
+```c++
+typedef struct readyList {
+   redisDb *db;
+   robj *key;
+} readyList;
+```
+
+2. 将新元素 value 添加到键 key3 。
+
+Redis 的主进程在执行完 pushGenericCommand 函数之后，会继续调用 handleClientsBlockedOnLists 函数 来接触某一个客户端的阻塞
+
+1. 如果 server.ready_keys 不为空，那么弹出该链表的表头元素，并取出表头元素中的
+   readyList 值。
+2. 根据 readyList 值所保存的 key 和 db ，在 server.blocking_keys 中查找所有因为 key
+   而被阻塞的客户端（以链表的形式保存）。
+3. 根据 readyList 值所保存的 key 和 db ，在 server.blocking_keys 中查找所有因为 key
+   而被阻塞的客户端（以链表的形式保存）。
+4. 删除 server.blocking_keys 中相应的客户端数据，取消客户端的阻塞状态。
+5. 继续执行步骤 3 和 4 ，直到 key 没有元素可弹出，或者所有因为 key 而阻塞的客户端都 取消阻塞为止。
+6. 继续执行步骤 1 ，直到 ready_keys 链表里的所有 readyList 结构都被处理完为止。
+
+### FBFS先阻塞先服务策略
+
+添加到blocking_keys的时候，默认添加在最后，而进行取消阻塞是队头开始取消阻塞，所以是一个FIFO链表，Redis中成为FBFS。
+
+### 主动取消：超过最大等待时间被取消
+
+每次 Redis 服务器常规操作函数（server cron job）执行时，程序都会遍历查询那些处于“正在阻塞”状态的客户端的最大阻塞时限，如果已经过期就会撤销阻塞，给客户端返回一个空白回复。
+
+## 集合 SET
+
+SADD 、 SRANDMEMBER 等 命 令 的 操 作 对 象， 它 使 用 INTSET 和 HT
+
+### 编码的选择
+
+第一个元素long long,就设置初始编码intset，否则设置为字典
+
+### 编码的切换
+
+默认intset，如果满足以下任意一个条件，就会被转换成字典:
+- intset 保存的整数值个数超过 server.set_max_intset_entries （默认值为 512 ）。
+- 试图往集合里添加一个新元素，并且这个元素不能被表示为 long long 类型。
+
+### 交集 O(n^2)
+
+SINTER、SINTERSTORE 
+
+### 并集 O(n)
+
+SUNION、SUNIONSTORE
+
+### 差集 O(n^2)
+
+SDIFF、SDIFFSTORE
+
+## 有序集 ZSET
+
+是 ZADD 、 ZCOUNT等命令的操作对象， 它使用ZIPLIST 和 SKIPLIST 两种方式编码：
+
+### 编码选择
+
+如果满足下述任一条件就创建压缩列表，否则就是跳跃表。
+- 服务器属性 server.zset_max_ziplist_entries 的值大于 0 （默认为 128 ）。
+- 元素的 member 长度小于服务器属性 server.zset_max_ziplist_value 的值（默认为 64 ）。
+
+### ZIPLIST
+
+每个有序集元素以两个相邻的 ziplist 节点表示，第一个节点保存元素的 member 域， 第二个元素保存元素的 score 域。
+多个元素之间按 score 值从小到大排序，如果两个元素的 score 相同，那么按字典序对 member 进行对比，决定那个元素排在前面，那个元素排在后面。
+
+<img src="./images/1681108349994.jpg">
+
+### SKIPLIST
+
+```c++
+typedef struct zset {
+   // 字典
+   dict *dict;
+   // 跳跃表
+   zskiplist *zsl;
+} zset;
+```
+
+<img src="./images/1681108715004.jpg">
+
+过使用字典结构，并将 member 作为键，score 作为值，有序集可以在 O(1) 复杂度内：
+- 检查给定 member 是否存在于有序集（被很多底层函数使用）；
+- 取出 member 对应的 score 值（实现 ZSCORE 命令）。
+
+通过使用跳跃表，可以让有序集支持以下两种操作：有点InnoDb非聚簇索引的味道
+- 在 O(log N) 期望时间、O(N) 最坏时间内根据 score 对 member 进行定位；
+- 范围性查找和处理操作是（高效地）实现 ZRANGE 、ZRANK 和 ZINTERSTORE
+等命令的关键。
+
