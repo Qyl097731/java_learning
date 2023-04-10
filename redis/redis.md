@@ -141,14 +141,14 @@ K-V键值对
 
 ### 字典的应用
 
-1. 数据库键空间
+1. Redis的键空间（存储所有的KV数据）
 2. 哈希键的一种底层实现
 
-#### 实现数据库键空间
+#### 实现Redis键空间
 
-Redis是一个键值对数据库，每个数据库都有一个与之对应的字典，该字典成为键空间
+Redis是一个键值对数据库，通过字典来存储所有键值对K-V（V是各种类型的value数据）
 
-当用户添加键值对的时候，程序就把该键值添加到键空间；删除时，就会把键值从键空间删除。
+当用户添加键值对的时候，程序就把该键值对添加到Redis中；删除时，就会把键值对从Redis中删除。
 
 FLUSHDB 清空键空间所有键值对数据
 
@@ -237,7 +237,7 @@ typedef struct dictEntry {
 1. MurmurHash2 32bit算法：分布律和速度都非常好
 2. 基于djb算法实现大小写无关的散列算法
 
-命令表以及Lua脚本缓存都用到了算法2；数据库、集群、哈希键、阻塞都用到了算法1
+命令表以及Lua脚本缓存都用到了算法2；Redis数据库、集群、哈希键、阻塞都用到了算法1
 
 ### 添加键值对到字典
 
@@ -273,7 +273,7 @@ typedef struct dictEntry {
 2. 强制rehash ： ratio > dict_force_resize_ratio 
 
 > dict_can_resize 为 false
-> 1. Redis使用子进程对数据库执行后台持久化任务（BGSAVE 、 BGREWRITEAOF），为了最大化copy on write禁止，会暂时设置dict_can_resize为假，避免执行自然rehash。
+> 1. Redis使用子进程对Redis数据库执行后台持久化任务（BGSAVE 、 BGREWRITEAOF），为了最大化copy on write禁止，会暂时设置dict_can_resize为假，避免执行自然rehash。
 > 2. 当然如果满足强制rehash，那么不管怎么样都会被rehash
 
 ### Rehash执行过程
@@ -317,11 +317,11 @@ rehash在激活之后，分批次、渐进式完成（将rehash分散到多个�
 主要由 _dictRehashStep 和 dictRehashMilliseconds 两个函数进行
 - _dictRehashStep
 
-数据库字典、哈希键字典被动rehash
+Redis数据库字典、哈希键字典被动rehash
 
 - dictRehashMilliseconds
 
-Redis服务器常规任务程序执行，用于对数据库字典主动rehash
+Redis服务器常规任务程序执行，用于对Redis数据库字典主动rehash
 
 #### _dictRehashStep
 
@@ -367,7 +367,7 @@ int htNeedsResize(dict *dict) {
 
 - 当字典用于实现哈希键的时候，每次从字典中删除一个键值对，程序就会执行一次
 htNeedsResize 函数，如果字典达到了收缩的标准，程序将立即对字典进行收缩；
-- 当字典用于实现数据库键空间（key space）的时候，收缩的时机由
+- 当字典用于实现Redis数据库所有K-V键值对存储的时候，收缩的时机由
 redis.c/tryResizeHashTables 函数决定，
 
 ### 字典的迭代
@@ -578,3 +578,108 @@ encoding的长度为两个bit:
 1. 定位节点，节点左移覆盖被删除得节点内存，收缩多余空间。
 2. 检查更新后继节点，和添加一样，可能会引起连锁更新。
 
+# Redis数据类型
+
+## 对象处理机制
+
+键类型不同，能执行的命令也各不相同。
+Redis必须让每个键带有类型信息，以选择合适的处理方式。即底层会根据不同的编码encoding进行不同操作，
+但是用户只需要进行某指令而不需要关注底层的实现，即屏蔽底层实现。
+
+为了解决以上问题，Redis 构建了自己的类型系统，这个系统的主要功能包括：
+- redisObject 对象。
+- 基于 redisObject 对象的类型检查。 
+- 基于 redisObject 对象的显式多态函数。
+- 对 redisObject 进行分配、共享和销毁的机制。
+
+### redisObject数据结构、以及Redis的数据类型
+
+redisObject是Redis本身处理的参数，Redis数据库中的键、值也都是这个数据类型
+
+```c++
+/*
+* Redis 对象
+*/
+typedef struct redisObject {
+   // 类型
+   unsigned type:4;
+   // 对齐位
+   unsigned notused:2;
+   // 编码方式
+   unsigned encoding:4;
+   // LRU 时间（相对于 server.lruclock）
+   unsigned lru:22;
+   // 引用计数
+   int refcount;
+   // 指向对象的值
+   void *ptr;
+} robj;
+```
+下面三个属性最为重要
+
+- type：值的类型
+
+```c++
+#define REDIS_STRING 0 // 字符串
+#define REDIS_LIST 1 // 列表
+#define REDIS_SET 2 // 集合
+#define REDIS_ZSET 3 // 有序集
+#define REDIS_HASH 4 // 哈希表
+```
+
+- encoding：对象所保存的值的编码
+```c++
+#define REDIS_ENCODING_RAW 0 // 编码为字符串
+#define REDIS_ENCODING_INT 1 // 编码为整数
+#define REDIS_ENCODING_HT 2 // 编码为哈希表
+#define REDIS_ENCODING_ZIPMAP 3 // 编码为 zipmap
+#define REDIS_ENCODING_LINKEDLIST 4 // 编码为双端链表
+#define REDIS_ENCODING_ZIPLIST 5 // 编码为压缩列表
+#define REDIS_ENCODING_INTSET 6 // 编码为整数集合
+#define REDIS_ENCODING_SKIPLIST 7 // 编码为跳跃表
+```
+- ptr：指向实际保存值的指针，由type和encoding决定
+
+如 果 一 个 redisObject 的 type 属 性 为 REDIS_LIST ， encoding 属 性 为
+REDIS_ENCODING_LINKEDLIST ，那么这个对象就是一个 Redis 列表，它的值保存在一个双
+端链表内，而 ptr 指针就指向这个双端链表；
+
+redisObject、Redis所有数据类型、Redis底层实现三者关系如下：
+<img src="./images/1680971175708.jpg">
+
+### 命令的类型检查和多态
+
+1. 根据给定 key ，在数据库字典中查找和它对应的 redisObject ，如果没找到，就返回
+   NULL 。
+2. 检查 redisObject 的 type 属性和执行命令所需的类型是否相符，如果不相符，返回类
+   型错误。
+3. 根据 redisObject 的 encoding 属性所指定的编码，选择合适的操作函数来处理底层的
+   数据结构。
+4. 返回数据结构的操作结果作为命令的返回值。
+
+### 对象共享
+
+Flyweight模式：预分配一些常见对象，在多个数据结构之间共享，避免重复分配的麻烦，节约了CPU时间
+
+- 各种命令的返回值，比如执行成功时返回的 OK ，执行错误时返回的 ERROR ，类型错误时
+返回的 WRONGTYPE ，命令入队事务时返回的 QUEUED 等等。
+- 包括0在内，小于redis.h/REDIS_SHARED_INTEGERS的所有整数
+（REDIS_SHARED_INTEGERS 的默认值为 10000）
+
+<img src="./images/1680972145146.jpg">
+
+> 共享对象只能被带指针的数据结构使用：字典、双端链表；
+> 整数集合、压缩列表就不适用
+
+### 引用计数以及对象销毁
+
+创建的时候1，共享就+1，释放就-1，最后refcount=0就销毁整个redisObject
+
+## 字符串
+
+除了GET、SET等命令的操作对象外，Redis中的所有Key以及执行命令时提供的参数，都是字符串类型的
+
+### 字符串编码
+
+- REDIS_ENCODING_INT使用long来保存long类型值
+- REDIS_ENCODING_RAW用 sdshdr 保存sds、long long、double、long double类型值
