@@ -924,6 +924,8 @@ EXEC DISCARD MULTI WATCH这四个命令即使处于事务状态，也会直接�
 
 ### ACID
 
+保证了一致性和隔离性
+
 #### 原子性
 
 Redis不回滚或重试，不具备原子性
@@ -943,3 +945,49 @@ Redis不回滚或重试，不具备原子性
   - RDB：执行事务的时候，不会中断事务去执行RDB工作。也就是事务执行之后，才会执行RDB，所以即使事务执行了一半，也不会影响一致性，以为RDB保存的是最近一次
     没有问题的数据库快照。
   - AOF：
+
+
+## 慢查询日志
+
+慢日志记录
+```c++
+typedef struct slowlogEntry {
+    // 命令参数
+    robj **argv;
+    // 命令参数数量
+    int argc;
+    // 唯一标识符
+    long long id; /* Unique entry identifier. */
+    // 执行命令消耗的时间，以纳秒（1 / 1,000,000,000 秒）为单位
+    long long duration; /* Time spent by the query, in nanoseconds. */
+    // 命令执行时的时间
+    time_t time; /* Unix time at which the query was executed. */
+} slowlogEntry;
+```
+
+redis.h/redisServer 结构里保存了几个和慢查询有关的属性
+
+```c++
+struct redisServer {
+    // ... other fields
+    // 保存慢查询日志的链表
+    list *slowlog; /* SLOWLOG list of commands */
+    // 慢查询日志的当前 id 值
+    long long slowlog_entry_id; /* SLOWLOG current entry ID */
+    // 慢查询时间限制
+    long long slowlog_log_slower_than; /* SLOWLOG time limit (to get logged) */
+    // 慢查询日志的最大条目数量
+    unsigned long slowlog_max_len; /* SLOWLOG max number of items logged */
+    // ... other fields
+};
+```
+<img src="./images/1682592860207.jpg">
+
+### 慢查询日志的操作
+
+- 查看 O(n)
+- 删除 O(n)
+- 获取链表的数量=获取slowlog链表的数量 O(1)
+
+
+
