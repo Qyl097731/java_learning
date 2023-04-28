@@ -989,5 +989,29 @@ struct redisServer {
 - 删除 O(n)
 - 获取链表的数量=获取slowlog链表的数量 O(1)
 
+# 内部运作机制
 
+## Redis数据库结构
 
+```c++
+typedef struct redisDb {
+    // 保存着数据库以整数表示的号码
+    int id;
+    // 保存着数据库中的所有键值对数据
+    // 这个属性也被称为键空间（key space）
+    dict *dict;
+    // 保存着键的过期信息
+    dict *expires;
+    // 实现列表阻塞原语，如 BLPOP
+    // 在列表类型一章有详细的讨论
+    dict *blocking_keys;
+    dict *ready_keys;
+    // 用于实现 WATCH 命令
+    // 在事务章节有详细的讨论
+    dict *watched_keys;
+} redisDb
+```
+
+### 数据库的切换
+
+服务器启动，会直接创建n哥数据库，数据库通过select n
