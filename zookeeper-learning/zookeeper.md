@@ -59,7 +59,19 @@
 观察者模式push
 <img src="./images/1683015870138.jpg" />
 
+## 生产集群少安装多少 zk 合适
+安装奇数台。
 
+生产经验：
+
+10 台服务器：3 台 zk；
+20 台服务器：5 台 zk；
+100 台服务器：11 台 zk；
+200 台服务器：11 台 zk
+服务器台数多：好处，提高可靠性；坏处：提高通信延时
+
+## 常用命令
+ls、get、create、delete
 
 # zookeeper 简单上手
 
@@ -94,4 +106,21 @@ server.1=localhost:2888:3888;2181
 
 ## 测试程序
 
+### 连接测试、简单使用
 详情见ZkClient
+
+### 动态上下线
+详情见 com/nju/zk/dynamic
+
+### 分布式锁
+
+<img src="./images/1683026143726.jpg"/>
+
+#### 原生Zookeeper 分布式锁
+
+详情见 com/nju/zk/locks
+
+#### curator 实现分布式
+
+详情见 com/nju/zk/curator
+
