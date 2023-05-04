@@ -944,7 +944,150 @@ Redis不回滚或重试，不具备原子性
     以数据总是一致的。
   - RDB：执行事务的时候，不会中断事务去执行RDB工作。也就是事务执行之后，才会执行RDB，所以即使事务执行了一半，也不会影响一致性，以为RDB保存的是最近一次
     没有问题的数据库快照。
-  - AOF：
+  - AOF：事务执行途中，也会有后台线程持续保存。
+    - 如果事务执行过程中，还未被写入AOF、或者AOF没有被SYNC保存到磁盘，那么重启之后能恢复到最新的历史版本
+    - 如果事务执行过程中，部分的AOF被保存，那么重启需要redis-check-aof来部分成功的事务移除，再次启动之后就能恢复到最新的历史版本。
+
+#### 隔离性
+
+单线程执行，所以Redis事务带有隔离性
+
+#### 持久性
+
+事务只是队列形式的Redis命令，没有提供额外的持久性功能，根据持久化模式决定持久性。
+- 单纯的内存模式，事务不持久
+- RDB模式下，如果写入前就宕机就不持久
+- AOF下主线程持续执行命令，每次执行完毕都会有Sync后台线程进行AOF保存，但是后台线程不会阻塞主线程，也就是说命令保存到AOF可能受前面命令落盘的影响，所以也
+不能说是持久的
+
+## 订阅与发布
+
+`PUBLISH` 、 `SUBSCRIBE`
+
+### 订阅频道
+
+每个Redis服务器进程都维持一个服务器状态redis.h/redisServer结构，结构的pubsub_channels 属性是一个字典，这个字典的键为正在被订阅的频道，而字典的值则是一个链表，链表中保存了所有订阅这个频道的客户端。
+
+<img src="./images/1682575003328.jpg">
+
+SUBSCRIBE channel1 channel2 channel3
+
+<img src="./images/1682575070380.jpg">
+
+### 发送消息到频道
+
+其中模式的订阅和信息发送，不仅会通知所有订阅该频道的客户端，还能像所有匹配了该模式的频道的客户端进行发送
+
+<img src="./images/1682575617526.jpg">
+
+<img src="./images/1682575771360.jpg">
+
+### 退订频道
+
+UNSUBSCRIBE
+
+### 订阅模式
+
+pubsub_patterns 属性是一个链表，链表中保存着所有和模式相关的信息，链表中的每个节点都包含一个 redis.h/pubsubPattern 结构：
+```c++
+struct redisServer {
+// ...
+list *pubsub_patterns;
+// ...
+};
+```
+链表中的每个节点都包含一个 redis.h/pubsubPattern 结构：
+
+```c++
+typedef struct pubsubPattern {
+redisClient *client;
+robj *pattern;
+} pubsubPattern;
+```
+client 属性保存着订阅模式的客户端，而 pattern 属性则保存着被订阅的模式
+
+<img src="./images/1682581649189.jpg">
+
+新添加一个后
+
+<img src="./images/1682581682016.jpg">
+
+### 发送消息到模式
+
+`PUBLISH`
+
+完整的publish如下
+```python
+def PUBLISH(channel, message):
+    # 遍历所有订阅频道 channel 的客户端
+    for client in server.pubsub_channels[channel]:
+        # 将信息发送给它们
+        send_message(client, message)
+    # 取出所有模式，以及订阅模式的客户端
+    for pattern, client in server.pubsub_patterns:
+        # 如果 channel 和模式匹配
+        if match(channel, pattern):
+            # 那么也将信息发给订阅这个模式的客户端
+            send_message(client, message)
+```
+
+### 退订模式
+
+`PUNSUBSCRIBE`删除 redisServer.pubsub_patterns中的节点
+
+## Lua脚本
+
+高效地处理 CAS
+
+### 脚本的安全性
+
+LUA脚本复制到附属节点或者将AOF写入AOF文件的时候，可能AOF带有随即性质或者副作用，在附属节点或者AOF文件读出重新运行时，可能得到的结果
+与之前不一致。破坏主从节点之间的一致性。
+
+### EVAL
+
+1. 先定义lua函数
+2. 执行这个lua函数
+
+### EVAHSHA
+
+执行之前生成过的lua函数，通过sha值直接调用
+
+## 慢查询日志
+
+### 相关数据结构
+
+慢查询日志以一个 slowlog.h/slowlogEntry 结构定义：
+```c++
+typedef struct slowlogEntry {
+    // 命令参数
+    robj **argv;
+    // 命令参数数量
+    int argc;
+    // 唯一标识符
+    long long id; /* Unique entry identifier. */
+    // 执行命令消耗的时间，以纳秒（1 / 1,000,000,000 秒）为单位
+    long long duration; /* Time spent by the query, in nanoseconds. */
+    // 命令执行时的时间
+    time_t time; /* Unix time at which the query was executed. */
+} slowlogEntry;
+```
+
+服务器状态的 redis.h/redisServer 结构里保存了几个和慢查询有关的属性：
+```c++
+struct redisServer {
+    // ... other fields
+    // 保存慢查询日志的链表
+    list *slowlog; /* SLOWLOG list of commands */
+    // 慢查询日志的当前 id 值
+    long long slowlog_entry_id; /* SLOWLOG current entry ID */
+    // 慢查询时间限制
+    long long slowlog_log_slower_than; /* SLOWLOG time limit (to get logged) */
+    // 慢查询日志的最大条目数量
+    unsigned long slowlog_max_len; /* SLOWLOG max number of items logged */
+    // ... other fields
+};
+```
 
 
 ## 慢查询日志
