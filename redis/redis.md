@@ -548,8 +548,6 @@ encoding的长度为两个bit:
 
 保存着节点内容：
 
-<img src="./images/1680867274858.jpg">
-
 <img src="./images/1680867303567.png">
 
 ### 添加节点到末端
