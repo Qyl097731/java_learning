@@ -14,7 +14,7 @@
 
 默认相关性得分算法： TF-TDF（词频-逆文档频率）
 - 词频——查找的单词在文档中出现次数越多，得分越高
-- 逆文档词频——如果某个单词在文档中比较少见，那么词的权重就越高，得分就越高
+- 逆文档词频——如果某个单词在所有文档中比较少见，那么词的权重就越高，得分就越高
 
 可以定制化需求，实现自定义字段得分
 
@@ -34,19 +34,19 @@ bicycle 同样可以可以跟bicycliist和sycling匹配
 
 历史上的搜索引擎没有持久化以及统计功能。ES是一个现代搜索引擎，提供了持久化存储、统计以及其他数据存储的特性。ES不支持事务。
 
-## Elasticsearch 主要特性
+### Elasticsearch 主要特性
 
-在Lucene之上，从缓存到实时性分析。
+在Lucene之上，ES添加了自己的功能，从缓存到实时性分析。 默认是集群化的，即使是单台服务器上运行，也称为集群。
 
 > 什么是Apache Solr
-> 基于Lucene的分布式搜索引擎。ES采用分布式模式，而Solr加入分片、
+> ES和Solr都是基于Lucene的分布式搜索引擎。ES采用分布式模式，而Solr采用分片
 
 大体执行流程如下:
 <img src="./images/1678191089460.jpg"/>
 
 默认情况下，ES原封不动地保存文档，将解析出的词条放入倒排索引，使得重要、快速、相关性好的搜索成为可能。
 
-## docker安装ES
+### docker安装ES
 
 ```bash
 docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.2
@@ -68,7 +68,7 @@ docker run --name es01 -p 9200:9200 -it docker.elastic.co/elasticsearch/elastics
 通过http://ip:9200来发起http请求
 
 ## 总结
-- ES建立在Lucene基础上的搜索引擎，用来索引大规模数据，可以全文搜索和实时数据统计，是一个NoSQL数据存储，包括试试搜索和分析。
+- ES建立在Lucene基础上的搜索引擎，用来索引大规模数据，可以全文搜索和实时数据统计，是一个NoSQL数据存储
 - 自动数据分片，服务器负载均衡，扩展性强。
 
 # 深入功能
