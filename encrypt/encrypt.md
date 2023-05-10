@@ -170,3 +170,21 @@ AES是目前最流行的加密算法之一，至今尚未被破解
 需要注意的是，ElGamal算法在加解密速度和密钥长度等方面与RSA算法有所不同，具体应用场景需要考虑算法特点和应用需求。
 
 
+## bug 记录
+
+### 问题
+
+#### 简述
+
+java.security.invalidkeyexception: illegal key size or default parameters
+
+java环境安装的时候自带的安全策略的密钥长度受限了，因为美国对软件出口的限制。需要去oracle官方网站下载
+
+#### 问题解决
+
+[JDK6 Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files 6] (https://www.oracle.com/java/technologies/jce-6-download.html)
+[JDK7 Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files 7 Download] (https://www.oracle.com/java/technologies/javase-jce7-downloads.html)
+[JDK8 JCE Unlimited Strength Jurisdiction Policy Files for JDK/JRE 8 Download] (https://www.oracle.com/java/technologies/javase-jce8-downloads.html)
+
+<img src="./images/1683734937467.jpg" /> 替换这两个文件即可。
+
