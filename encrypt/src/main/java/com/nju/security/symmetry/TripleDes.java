@@ -1,4 +1,4 @@
-package com.nju.security.des;
+package com.nju.security.symmetry;
 
 import org.apache.commons.codec.binary.Hex;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;

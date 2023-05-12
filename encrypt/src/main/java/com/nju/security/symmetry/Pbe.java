@@ -1,4 +1,4 @@
-package com.nju.security.pbe;
+package com.nju.security.symmetry;
 
 import org.apache.commons.codec.binary.Base64;
 

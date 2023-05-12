@@ -1,4 +1,4 @@
-package com.nju.security.mac;
+package com.nju.security.msgdigest;
 
 import org.apache.commons.codec.binary.Hex;
 import org.bouncycastle.crypto.digests.MD5Digest;

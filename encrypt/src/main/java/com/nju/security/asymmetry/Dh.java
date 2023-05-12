@@ -1,4 +1,4 @@
-package com.nju.security.dh;
+package com.nju.security.asymmetry;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;

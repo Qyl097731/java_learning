@@ -1,4 +1,4 @@
-package com.nju.security.md;
+package com.nju.security.msgdigest;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;

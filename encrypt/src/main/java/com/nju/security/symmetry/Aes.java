@@ -1,4 +1,4 @@
-package com.nju.security.aes;
+package com.nju.security.symmetry;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Base64Encoder;

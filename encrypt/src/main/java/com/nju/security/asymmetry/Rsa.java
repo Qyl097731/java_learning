@@ -1,17 +1,16 @@
-package com.nju.security.rsa;
+package com.nju.security.asymmetry;
 
 import org.apache.commons.codec.binary.Base64;
 
 import javax.crypto.Cipher;
 import java.security.*;
-import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 /**
- * @description rsa
+ * @description rsa 非对称
  * @date 2023/5/10 21:24
  * @author: qyl
  */
