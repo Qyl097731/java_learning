@@ -1,4 +1,4 @@
-package com.nju.security;
+package com.nju.security.elgamal;
 
 import org.apache.commons.codec.binary.Base64;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
