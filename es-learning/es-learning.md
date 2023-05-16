@@ -317,8 +317,56 @@ action.destructive_requires_name: true 可以防止delete _all的误删
 
 # 搜索数据
 
+## 搜索请求的结构
 
+### 结果的解析
 
+<img src="./images/1684242329642.jpg" />
+
+## 查询和过滤器
+
+### 常用基础查询和过滤器
+
+- match_all 
+
+  默认对所有文档进行匹配
+- query_string 
+  
+  非常强大，甚至不安全
+
+- term查询和term过滤器 
+
+  - 简单，不经过分析就进行匹配，所以必须精确。 可以用作filter过滤器中来进行匹配。
+    <img src="./images/1684244234995.jpg"/>
+  - 限制文档至少拥有多少字段才算匹配
+    <img src="./images/1684244815753.jpg"/>
+
+### match 查询 和 term 过滤器
+
+- match 先对要查询的进行拆分，再去进行匹配，实际是or操作。指定了operator是and才能完整匹配。
+
+- 可以通过phrase词组查询，尤其是想让查询多个词之间有空一定空白时，通过slot=1来完成。
+
+## 组合和复合查询
+
+### must、should、must_not
+
+- must ： query1 && query2 ....
+- should: query1 || query2 ....
+- must_not: not query1 & not query2...
+
+> minimum_should_match选项的默认值有一些隐藏的特性。如果指定了must子句,minimum_should_match默认值为0。如果没有指定must子句，默认值就是1。
+
+## 超越match和过滤器查询
+
+- 通配符 wildcard 
+  - 0或多个
+  - ？单个字符
+  - 前缀当然越精准越好，能提前过滤很多数据
+- 范围查询 range
+- 过滤器 exits 
+- query_string 也能包装后实现过滤功能
+- 指定是否缓存过滤结果 _cache
 # 总结
 
 ## ES存放大量数据需要增加资源，通过_close为什么能解决？
@@ -372,4 +420,34 @@ GET movies/_search
     }
   }
 }
+```
+
+### 查询 和 过滤器 的区别
+
+- 查询会对文档排序打分，过滤器不会。由于过滤器返回结果是固定的，对结果分数高低不关心，所以可以进行缓存。
+- 过滤器性能优于查询
+
+<img src="./images/1684242426101.jpg" />
+
+过滤器就是就是建立一个二进制位集合表明是否存在，一旦建立就成为缓存，之后对位集合的过滤自然是提升了性能。
+加入过滤器能够减少很多不必要文档的分数计算，提升性能。
+
+<img src="./images/1684243082427.jpg"/>
+
+### phrase_prefix
+
+将最后一个词进行扩展，当搜索的时候可以进行自动填充，max_expansions来指定别扩展太多的词语。
+如下就是可以搜到Elasticsearch dendvid
+
+```shell
+"query" : {
+  "match" : {
+    "name" : {
+      "type" : "phrase_prefix",
+      "query" : "Elasticsearch den" ,
+      "max_expansions" : 1
+    }
+  }
+}
+"_source" : [ "name" ]
 ```
