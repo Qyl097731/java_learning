@@ -1,8 +1,8 @@
 //
-// 此文件是由 JavaTM Architecture for XML Binding (JAXB) 引用实现 v2.3.2 生成的
-// 请访问 <a href="https://javaee.github.io/jaxb-v2/">https://javaee.github.io/jaxb-v2/</a> 
+// 此文件是由 JavaTM Architecture for XML Binding (JAXB) 引用实现 v2.2.11 生成的
+// 请访问 <a href="http://java.sun.com/xml/jaxb">http://java.sun.com/xml/jaxb</a> 
 // 在重新编译源模式时, 对此文件的所有修改都将丢失。
-// 生成时间: 2023.05.23 时间 08:25:31 PM CST 
+// 生成时间: 2023.05.23 时间 08:05:52 PM CST 
 //
 
 
@@ -25,7 +25,7 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;complexContent&gt;
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType"&gt;
  *       &lt;sequence&gt;
- *         &lt;element name="name" type="{http://www.w3.org/2001/XMLSchema}string"/&gt;
+ *         &lt;element name="country" type="{http://www.qyl.com/ws}country"/&gt;
  *       &lt;/sequence&gt;
  *     &lt;/restriction&gt;
  *   &lt;/complexContent&gt;
@@ -36,36 +36,36 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "", propOrder = {
-    "name"
+    "country"
 })
-@XmlRootElement(name = "getCountryRequest")
-public class GetCountryRequest {
+@XmlRootElement(name = "getCountryResponse")
+public class GetCountryResponse {
 
     @XmlElement(required = true)
-    protected String name;
+    protected Country country;
 
     /**
-     * 获取name属性的值。
+     * 获取country属性的值。
      * 
      * @return
      *     possible object is
-     *     {@link String }
+     *     {@link Country }
      *     
      */
-    public String getName() {
-        return name;
+    public Country getCountry() {
+        return country;
     }
 
     /**
-     * 设置name属性的值。
+     * 设置country属性的值。
      * 
      * @param value
      *     allowed object is
-     *     {@link String }
+     *     {@link Country }
      *     
      */
-    public void setName(String value) {
-        this.name = value;
+    public void setCountry(Country value) {
+        this.country = value;
     }
 
 }

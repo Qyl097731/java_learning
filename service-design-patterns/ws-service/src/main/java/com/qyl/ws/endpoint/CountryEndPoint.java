@@ -4,16 +4,18 @@ import com.qyl.ws.domain.Country;
 import com.qyl.ws.domain.Currency;
 import com.qyl.ws.domain.GetCountryRequest;
 import com.qyl.ws.domain.GetCountryResponse;
+import org.springframework.ws.config.annotation.EnableWs;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 import org.springframework.ws.server.endpoint.annotation.RequestPayload;
 import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
 
 /**
- * country服务端口
- *
- * @author qyl
+ * @description 服务端口
+ * @date 2023/5/23 20:27
+ * @author: qyl
  */
+@EnableWs
 @Endpoint
 public class CountryEndPoint {
 

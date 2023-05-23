@@ -2,15 +2,15 @@ package com.qyl.ws;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Configuration;
 
 /**
- * @description
- * @date 2023/5/22 21:47
- * @author: qyl
+ * 客户端
+ * @author qyl
  */
 @SpringBootApplication
-public class SoapApplication {
+public class WsClientApplication {
     public static void main(String[] args) {
-        SpringApplication.run(SoapApplication.class, args);
+        SpringApplication.run(WsClientApplication.class, args);
     }
 }

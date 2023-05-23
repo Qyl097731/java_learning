@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.4.1</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.qyl.ws</groupId>
+    <artifactId>ws-client</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <name>ws-client</name>
+    <description>ws-client</description>
+
+    <properties>
+        <java.version>1.8</java.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>wsdl4j</groupId>
+            <artifactId>wsdl4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.ws/spring-ws-core -->
+        <dependency>
+            <groupId>org.springframework.ws</groupId>
+            <artifactId>spring-ws-core</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jvnet.jaxb2.maven2</groupId>
+                <artifactId>maven-jaxb2-plugin</artifactId>
+                <version>0.12.3</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <schemaLanguage>WSDL</schemaLanguage>
+                    <generatePackage>com.qyl.ws.domain</generatePackage>
+                    <generateDirectory>${basedir}/src/main/java</generateDirectory>
+                    <schemas>
+                        <schema>
+                            <fileset>
+                                <!-- Defaults to schemaDirectory. -->
+                                <directory>${basedir}/src/main/resources/schema</directory>
+                                <!-- Defaults to schemaIncludes. -->
+                                <includes>
+                                    <include>*.wsdl</include>
+                                </includes>
+                                <!-- Defaults to schemaIncludes -->
+                                <!--<excludes> -->
+                                <!--<exclude>*.xs</exclude> -->
+                                <!--</excludes> -->
+                            </fileset>
+                            <!--<url>http://localhost:8080/ws/countries.wsdl</url> -->
+                        </schema>
+                    </schemas>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

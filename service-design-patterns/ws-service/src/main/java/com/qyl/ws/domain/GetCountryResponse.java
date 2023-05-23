@@ -1,21 +1,25 @@
 //
 // 此文件是由 JavaTM Architecture for XML Binding (JAXB) 引用实现 v2.3.2 生成的
-// 请访问 <a href="https://javaee.github.io/jaxb-v2/">https://javaee.github.io/jaxb-v2/</a>
+// 请访问 <a href="https://javaee.github.io/jaxb-v2/">https://javaee.github.io/jaxb-v2/</a> 
 // 在重新编译源模式时, 对此文件的所有修改都将丢失。
-// 生成时间: 2023.05.22 时间 09:41:57 PM CST
+// 生成时间: 2023.05.23 时间 08:25:31 PM CST 
 //
 
 
 package com.qyl.ws.domain;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
 
-import jakarta.xml.bind.annotation.*;
 
 /**
  * <p>anonymous complex type的 Java 类。
- *
+ * 
  * <p>以下模式片段指定包含在此类中的预期内容。
- *
+ * 
  * <pre>
  * &lt;complexType&gt;
  *   &lt;complexContent&gt;
@@ -27,8 +31,8 @@ import jakarta.xml.bind.annotation.*;
  *   &lt;/complexContent&gt;
  * &lt;/complexType&gt;
  * </pre>
- *
- *
+ * 
+ * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "", propOrder = {
@@ -42,11 +46,11 @@ public class GetCountryResponse {
 
     /**
      * 获取country属性的值。
-     *
+     * 
      * @return
      *     possible object is
      *     {@link Country }
-     *
+     *     
      */
     public Country getCountry() {
         return country;
@@ -54,11 +58,11 @@ public class GetCountryResponse {
 
     /**
      * 设置country属性的值。
-     *
+     * 
      * @param value
      *     allowed object is
      *     {@link Country }
-     *
+     *     
      */
     public void setCountry(Country value) {
         this.country = value;

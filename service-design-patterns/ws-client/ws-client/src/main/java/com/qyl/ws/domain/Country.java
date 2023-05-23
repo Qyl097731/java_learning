@@ -1,25 +1,21 @@
 //
-// 此文件是由 JavaTM Architecture for XML Binding (JAXB) 引用实现 v2.3.2 生成的
-// 请访问 <a href="https://javaee.github.io/jaxb-v2/">https://javaee.github.io/jaxb-v2/</a> 
+// 此文件是由 JavaTM Architecture for XML Binding (JAXB) 引用实现 v2.2.11 生成的
+// 请访问 <a href="http://java.sun.com/xml/jaxb">http://java.sun.com/xml/jaxb</a>
 // 在重新编译源模式时, 对此文件的所有修改都将丢失。
-// 生成时间: 2023.05.23 时间 08:25:31 PM CST 
+// 生成时间: 2023.05.23 时间 08:05:52 PM CST
 //
 
 
 package com.qyl.ws.domain;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlSchemaType;
-import javax.xml.bind.annotation.XmlType;
+import javax.xml.bind.annotation.*;
 
 
 /**
  * <p>country complex type的 Java 类。
- * 
+ *
  * <p>以下模式片段指定包含在此类中的预期内容。
- * 
+ *
  * <pre>
  * &lt;complexType name="country"&gt;
  *   &lt;complexContent&gt;
@@ -34,8 +30,8 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;/complexContent&gt;
  * &lt;/complexType&gt;
  * </pre>
- * 
- * 
+ *
+ *
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "country", propOrder = {
@@ -57,11 +53,11 @@ public class Country {
 
     /**
      * 获取name属性的值。
-     * 
+     *
      * @return
      *     possible object is
      *     {@link String }
-     *     
+     *
      */
     public String getName() {
         return name;
@@ -69,11 +65,11 @@ public class Country {
 
     /**
      * 设置name属性的值。
-     * 
+     *
      * @param value
      *     allowed object is
      *     {@link String }
-     *     
+     *
      */
     public void setName(String value) {
         this.name = value;
@@ -81,7 +77,7 @@ public class Country {
 
     /**
      * 获取population属性的值。
-     * 
+     *
      */
     public int getPopulation() {
         return population;
@@ -89,7 +85,7 @@ public class Country {
 
     /**
      * 设置population属性的值。
-     * 
+     *
      */
     public void setPopulation(int value) {
         this.population = value;
@@ -97,11 +93,11 @@ public class Country {
 
     /**
      * 获取capital属性的值。
-     * 
+     *
      * @return
      *     possible object is
      *     {@link String }
-     *     
+     *
      */
     public String getCapital() {
         return capital;
@@ -109,11 +105,11 @@ public class Country {
 
     /**
      * 设置capital属性的值。
-     * 
+     *
      * @param value
      *     allowed object is
      *     {@link String }
-     *     
+     *
      */
     public void setCapital(String value) {
         this.capital = value;
@@ -121,11 +117,11 @@ public class Country {
 
     /**
      * 获取currency属性的值。
-     * 
+     *
      * @return
      *     possible object is
      *     {@link Currency }
-     *     
+     *
      */
     public Currency getCurrency() {
         return currency;
@@ -133,11 +129,11 @@ public class Country {
 
     /**
      * 设置currency属性的值。
-     * 
+     *
      * @param value
      *     allowed object is
      *     {@link Currency }
-     *     
+     *
      */
     public void setCurrency(Currency value) {
         this.currency = value;
