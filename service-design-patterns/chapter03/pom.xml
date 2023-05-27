@@ -7,6 +7,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>jms</module>
+        <module>polling</module>
     </modules>
 
     <parent>
@@ -35,6 +36,11 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>
