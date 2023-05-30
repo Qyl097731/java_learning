@@ -6,7 +6,6 @@
         <groupId>com.nju</groupId>
         <artifactId>soap</artifactId>
         <version>1.0-SNAPSHOT</version>
-        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <artifactId>ws-client</artifactId>

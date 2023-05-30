@@ -193,6 +193,8 @@ GetStockQuote, 那么框架可能生成两段XSD, 分别描述名称为 GetStock
 
 ## 链接服务
 
+
+
 # 案例
 
 ## SOAP/WSDL
@@ -228,4 +230,10 @@ service-design-patterns/chapter03/jms
 service-design-patterns/chapter03/polling
 
 ## 请求/确认/转发(待做)
+
+## 媒体类型协商模式-服务器驱动的协商
+
+客户端指定类型，服务器按照类型最适配地响应
+
+service-design-patterns/chapter03/mine-negotiation
 
