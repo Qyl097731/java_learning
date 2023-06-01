@@ -1,4 +1,4 @@
-package demo01;
+package observer;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -1,4 +1,4 @@
-package demo01;
+package observer;
 
 import java.math.BigDecimal;
 
@@ -7,9 +7,9 @@ import java.math.BigDecimal;
  * @date:2022/11/23 17:21
  * @author: qyl
  */
-public class ThermostatsB extends Thermostats{
+public class ThermostatsA extends Thermostats{
 
-    public ThermostatsB(ControlSystem controlSystem) {
+    public ThermostatsA(ControlSystem controlSystem) {
         super (controlSystem);
     }
 
@@ -17,5 +17,6 @@ public class ThermostatsB extends Thermostats{
     @Override
     protected void adjustTemperature(String time, BigDecimal temperature){
         //... 等待
+
     }
 }

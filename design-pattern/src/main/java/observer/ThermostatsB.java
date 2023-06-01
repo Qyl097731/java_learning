@@ -1,18 +1,15 @@
-package demo01;
+package observer;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 
 /**
  * @description
  * @date:2022/11/23 17:21
  * @author: qyl
  */
-public class ThermostatsA extends Thermostats{
+public class ThermostatsB extends Thermostats{
 
-    public ThermostatsA(ControlSystem controlSystem) {
+    public ThermostatsB(ControlSystem controlSystem) {
         super (controlSystem);
     }
 
@@ -20,6 +17,5 @@ public class ThermostatsA extends Thermostats{
     @Override
     protected void adjustTemperature(String time, BigDecimal temperature){
         //... 等待
-
     }
 }
