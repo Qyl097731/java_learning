@@ -1,7 +1,7 @@
 package daily;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * @description
@@ -10,14 +10,20 @@ import java.util.Map;
  */
 public class Solution1 {
     public int[] twoSum(int[] nums, int target) {
-        Map<Integer, Integer> map = new HashMap<> ();
-        int n = nums.length;
-        for (int i = 0; i < n; i++) {
-            if (map.containsKey (target - nums[i])) {
-                return new int[]{i, map.get (target - nums[i])};
+        if (nums != null) {
+            Integer[] index = IntStream.range (0, nums.length).boxed ().toArray (Integer[]::new);
+            Arrays.sort (index, (i, j) -> Integer.compare (nums[i], nums[j]));
+            int l = 0, r = nums.length - 1;
+            while (l < r) {
+                if (nums[index[l]] + nums[index[r]] == target) {
+                    return new int[]{index[l], index[r]};
+                } else if (nums[index[l]] + nums[index[r]] > target) {
+                    r--;
+                } else {
+                    l++;
+                }
             }
-            map.put (nums[i], i);
         }
-        return new int[0];
+        return null;
     }
 }
