@@ -28,5 +28,37 @@
 
 防止leader挂了之后，无法提供服务；如果副本（follower）存在就可以成为新的leader提供数据服务。
 
+## Where
 
+## How
 
+### 搭建集群
+
+```shell
+# zookeeper进行节点管理、监控
+docker pull wurstmeister/zookeeper
+
+docker run -d --name zookeeper -p 2181:2181 -t wurstmeister/zookeeper
+
+# kafka集群搭建
+docker search kafka --limit=50
+docker pull wurstmeister/kafka
+
+docker run -d --name kafka0 -p 9092:9092 -e KAFKA_BROKER_ID=0 -e KAFKA_ZOOKEEPER_CONNECT=master:2181 -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://master:9092 -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092 -t wurstmeister/kafka
+
+docker run -d --name kafka1 -p 9093:9093 -e KAFKA_BROKER_ID=1 -e KAFKA_ZOOKEEPER_CONNECT=master:2181 -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://master:9093 -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9093 -t wurstmeister/kafka
+
+docker run -d --name kafka2 -p 9094:9094 -e KAFKA_BROKER_ID=2 -e KAFKA_ZOOKEEPER_CONNECT=master:2181 -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://master:9094 -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9094 -t wurstmeister/kafka
+```
+
+### Java简单使用 
+
+AsyncProducer：异步发送
+SyncProducer：同步发送
+
+## 附录
+
+### 在同步发消息的场景下：生产者发动broker上后，ack会有 3 种不同的选择：
+1. acks=0： 表示producer不需要等待任何broker确认收到消息的回复，就可以继续发送下一条消息。性能最高，但是最容易丢消息。 
+2. acks=1： 至少要等待leader已经成功将数据写入本地log，但是不需要等待所有follower是否成功写入。就可以继续发送下一条消息。这种情况下，如果follower没有成功备份数据，而此时leader又挂掉，则消息会丢失。 
+3. acks=-1或all： 需要等待 min.insync.replicas(默认为 1 ，推荐配置大于等于2) 这个参数配置的副本个数都成功写入日志，这种策略会保证只要有一个备份存活就不会丢失数据。这是最强的数据保证。一般除非是金融级别，或跟钱打交道的场景才会使用这种配置。
