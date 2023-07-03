@@ -30,8 +30,8 @@ public class MyKafkaController {
     }
 
     @PostMapping("topics")
-    public void createTopic(@RequestParam String topicname) {
-        NewTopic topic = new NewTopic(TOPIC_NAME, 2, (short) 3);
+    public void createTopic(@RequestParam String topicName) {
+        NewTopic topic = new NewTopic(topicName, 2, (short) 3);
         adminClient.createTopics(Collections.singletonList(topic));
     }
 
