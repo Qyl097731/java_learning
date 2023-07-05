@@ -1,13 +1,13 @@
-/**
+package grammer; /**
  * projectName: fushi
- * fileName: test04.java
+ * fileName: grammer.test04.java
  * packageName: fushi
  * date: 2022年3月24日下午5:02:44
  * copyright(c) 2020 南晓18卓工
  */
 
 /**
- * @title: test04.java
+ * @title: grammer.test04.java
  * @package fushi
  * @description: TODO
  * @author: qiuyiliang

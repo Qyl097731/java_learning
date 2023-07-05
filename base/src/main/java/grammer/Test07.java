@@ -1,13 +1,13 @@
-/**
+package grammer; /**
  * projectName: fushi
- * fileName: Test07.java
+ * fileName: grammer.Test07.java
  * packageName: fushi
  * date: 2022年3月24日下午6:18:21
  * copyright(c) 2020 南晓18卓工
  */
 
 /**
- * @title: Test07.java
+ * @title: grammer.Test07.java
  * @package fushi
  * @description: TODO
  * @author: qiuyiliang
@@ -23,7 +23,7 @@ public class Test07 {
 
 class A{
 	/**
-	 * @title: A
+	 * @title: grammer.A
 	 * @description: TODO(这里用一句话描述这个方法的作用)
 	 * @param:
 	 * @throws:
@@ -39,7 +39,7 @@ class A{
 
 class B extends A{
 	/**
-	 * @title: B
+	 * @title: grammer.B
 	 * @description: TODO(这里用一句话描述这个方法的作用)
 	 * @param:
 	 * @throws:
@@ -54,7 +54,7 @@ class B extends A{
 
 class C extends B{
 	/**
-	 * @title: C
+	 * @title: grammer.C
 	 * @description: TODO(这里用一句话描述这个方法的作用)
 	 * @param:
 	 * @throws:

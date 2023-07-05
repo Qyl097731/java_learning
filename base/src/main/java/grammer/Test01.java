@@ -1,13 +1,13 @@
-/**
+package grammer; /**
  * projectName: fushi
- * fileName: test01.java
+ * fileName: grammer.Test01.java
  * packageName: fushi
  * date: 2022年3月24日下午4:17:23
  * copyright(c) 2020 南晓18卓工
  */
 
 /**
- * @title: test01.java
+ * @title: grammer.Test01.java
  * @package fushi
  * @description: TODO
  * @author: qiuyiliang
@@ -15,7 +15,7 @@
  * @version: V1.0
 */
 
-public class test01 {
+public class Test01 {
 
 	public static void main(String[] args) {
 		byte a = 120;

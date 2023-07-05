@@ -1,13 +1,13 @@
-/**
+package grammer; /**
  * projectName: fushi
- * fileName: text02.java
+ * fileName: grammer.Test02.java
  * packageName: fushi
  * date: 2022年3月24日下午4:28:47
  * copyright(c) 2020 南晓18卓工
  */
 
 /**
- * @title: text02.java
+ * @title: grammer.Test02.java
  * @package fushi
  * @description: TODO
  * @author: qiuyiliang
@@ -15,7 +15,7 @@
  * @version: V1.0
  */
 
-public class text02 {
+public class Test02 {
 	public static void main(String[] args) {
 		int x, y = 10;
 		if (((x = 0) == 0) || ((y = 20) == 20)) {

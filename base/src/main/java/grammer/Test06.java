@@ -1,13 +1,13 @@
-/**
+package grammer; /**
  * projectName: fushi
- * fileName: Test06.java
+ * fileName: grammer.Test06.java
  * packageName: fushi
  * date: 2022年3月24日下午5:36:50
  * copyright(c) 2020 南晓18卓工
  */
 
 /**
- * @title: Test06.java
+ * @title: grammer.Test06.java
  * @package fushi
  * @description: TODO
  * @author: qiuyiliang
@@ -50,7 +50,7 @@ class Number{
 
 class Say{
 	/**
-	 * @title: Test06.Say
+	 * @title: grammer.Test06.grammer.Say
 	 * @description: TODO(这里用一句话描述这个方法的作用)
 	 * @param:
 	 * @throws:
