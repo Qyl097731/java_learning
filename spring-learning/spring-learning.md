@@ -308,3 +308,104 @@ Spring会利用反射调用相应的set方法，并将注入的参数传递给�
             }
         }
     ```
+
+#### 引入外部属性配置文件
+1. 程序编写
+``` java
+  public class MyDataSource implements DataSource {
+     private String driver;
+     private String url;
+     private String username;
+     private String password;
+   
+     public void setDriver(String driver) {
+         this.driver = driver;
+     }
+   
+     public void setUrl(String url) {
+         this.url = url;
+     }
+   
+     public void setUsername(String username) {
+         this.username = username;
+     }
+   
+     public void setPassword(String password) {
+         this.password = password;
+     }
+  }
+```
+
+2. properties配置
+
+```properties
+driver=com.mysql.cj.jdbc.Driver
+url=jdbc:mysql://localhost:3306/spring
+username=root
+password=root123
+```
+
+3. 数据源配置
+
+```properties
+    <context:property-placeholder location="jdbc.properties"/>
+    
+    <bean id="dataSource" class="com.powernode.spring6.beans.MyDataSource">
+        <property name="driver" value="${driver}"/>
+        <property name="url" value="${url}"/>
+        <property name="username" value="${username}"/>
+        <property name="password" value="${password}"/>
+    </bean>
+```
+
+## Bean的作用域
+
+1. singleton
+
+   Bean对象默认是单例的.默认都是相同的
+   
+   ```java
+   public class SpringBean {
+       public SpringBean() {
+           System.out.println("SpringBean的无参数构造方法执行。");
+       }
+   }
+   
+   @Test
+   public void testScope(){
+      ApplicationContext applicationContext = new ClassPathXmlApplicationContext("spring-scope.xml");
+   }
+   ```
+   
+   <img src="./images/1688660536460.jpg"/>
+   
+   通过测试得知，默认情况下，Bean对象的创建是在初始化Spring上下文的时候就完成的。
+
+2. prototype
+
+   在每一次执行getBean()方法的时候创建Bean对象，调用几次则创建几次。
+   
+   ```properties
+   <bean id="sb" class="com.powernode.spring6.beans.SpringBean" scope="prototype" />
+   ```
+   
+   ```java
+   @Test
+   public void testScope(){
+      ApplicationContext applicationContext = new ClassPathXmlApplicationContext("spring-scope.xml");
+   }
+   ```
+   
+   这一次在初始化Spring上下文的时候，并没有创建Bean对象。不会打印任何东西。
+
+3. 其他scope
+
+   scope属性的值不止两个，它一共包括8个选项：
+   - singleton：默认的，单例。 
+   - prototype：原型。每调用一次getBean()方法则获取一个新的Bean对象。或每次注入的时候都是新对象。 
+   - request：一个请求对应一个Bean。仅限于在WEB应用中使用。 
+   - session：一个会话对应一个Bean。仅限于在WEB应用中使用。 
+   - global session：portlet应用中专用的。如果在Servlet的WEB应用中使用global session的话，和session一个效果。（portlet和servlet都是规范。servlet运行在servlet容器中，例如Tomcat。portlet运行在portlet容器中。）
+   - application：一个应用对应一个Bean。仅限于在WEB应用中使用。 
+   - websocket：一个websocket生命周期对应一个Bean。仅限于在WEB应用中使用。 
+     - 自定义scope：很少使用。参见
