@@ -1,15 +1,14 @@
-package observer;
+package com.nju.observer;
 
 import java.math.BigDecimal;
 
 /**
- * @description
  * @date:2022/11/23 17:21
  * @author: qyl
  */
-public class ThermostatsB extends Thermostats{
+public class ThermostatsC extends Thermostats{
 
-    public ThermostatsB(ControlSystem controlSystem) {
+    public ThermostatsC(ControlSystem controlSystem) {
         super (controlSystem);
     }
 

@@ -1,4 +1,4 @@
-package observer;
+package com.nju.observer;
 
 
 import java.math.BigDecimal;
