@@ -688,3 +688,7 @@ Cache of singleton factories: bean name to ObjectFactory. 单例工厂缓存：k
 
 从源码中可以看到，spring会先从一级缓存中获取Bean，如果获取不到，则从二级缓存中获取Bean，如果二级缓存还是获取不到，则从三级缓存中获取之前曝光的ObjectFactory对象，  
 通过ObjectFactory对象获取Bean实例，这样就解决了循环依赖的问题。
+
+## 手写Spring框架
+
+Spring IoC容器的实现原理：工厂模式 + 解析XML + 反射机制。

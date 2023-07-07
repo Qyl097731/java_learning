@@ -11,6 +11,7 @@
         <module>customer-scope</module>
         <module>lifecycle</module>
         <module>recycle</module>
+        <module>myspring</module>
     </modules>
 
     <packaging>pom</packaging>
