@@ -409,3 +409,282 @@ password=root123
    - application：一个应用对应一个Bean。仅限于在WEB应用中使用。 
    - websocket：一个websocket生命周期对应一个Bean。仅限于在WEB应用中使用。 
      - 自定义scope：很少使用。参见
+
+## Bean实例华方法
+
+Spring为Bean提供了多种实例化方式，通常包括4种方式。（也就是说在Spring中为Bean对象的创建准备了多种方案，目的是：更加灵活）
+- 第一种：通过构造方法实例化
+- 第二种：通过简单工厂模式实例化
+- 第三种：通过factory-bean实例化
+- 第四种：通过FactoryBean接口实例化
+
+### 构造方法
+
+```java
+public class User {
+    public User() {
+        System.out.println("User类的无参数构造方法执行。");
+    }
+}
+```
+
+```xml
+    <bean id="userBean" class="com.powernode.spring6.bean.User"/>
+```
+
+### 工厂模式
+
+```java
+public class Vip {
+}
+
+public class VipFactory {
+    public static Vip get(){
+        return new Vip();
+    }
+}
+
+```
+
+需要指定factory-method的方法
+```xml
+<bean id="vipBean" class="com.powernode.spring6.bean.VipFactory" factory-method="get"/>
+```
+
+
+### factory-bean方式
+
+这种方式本质上是：通过工厂方法模式进行实例化。
+
+```java
+public class Order {
+}
+public class OrderFactory {
+    public Order get(){
+        return new Order();
+    }
+}
+```
+
+在Spring配置文件中指定factory-bean以及factory-method
+```xml
+<bean id="orderFactory" class="com.powernode.spring6.bean.OrderFactory"/>
+<bean id="orderBean" factory-bean="orderFactory" factory-method="get"/>
+```
+
+### 通过FactoryBean接口实例化
+
+FactoryBean在Spring中是一个接口。被称为“工厂Bean”。“工厂Bean”是一种特殊的Bean。所有的“工厂Bean”都是用来协助Spring框架来创建其他Bean对象的。
+
+```java
+public class Person {
+}
+
+public class PersonFactoryBean implements FactoryBean<Person> {
+
+    @Override
+    public Person getObject() throws Exception {
+        return new Person();
+    }
+
+    @Override
+    public Class<?> getObjectType() {
+        return null;
+    }
+
+    @Override
+    public boolean isSingleton() {
+        // true表示单例
+        // false表示原型
+        return true;
+    }
+}
+```
+
+在Spring配置文件中配置FactoryBean。
+
+```xml
+<bean id="personBean" class="com.powernode.spring6.bean.PersonFactoryBean"/>
+```
+
+
+## BeanFactory和FactoryBean的区别
+
+### BeanFactory
+
+Spring IoC容器的顶级对象，BeanFactory被翻译为“Bean工厂”，在Spring的IoC容器中，“Bean工厂”负责创建Bean对象。
+BeanFactory是工厂。
+
+### FactoryBean
+
+它是一个Bean，是一个能够辅助Spring实例化其它Bean对象的一个Bean。在Spring中，Bean可以分为两类：
+- 第一类：普通Bean
+- 第二类：工厂Bean（记住：工厂Bean也是一种Bean，只不过这种Bean比较特殊，它可以辅助Spring实例化其它Bean对象。）
+
+## Bean的生命周期
+
+[Bean的生命周期](lifecycle/src/main/java/com/nju/spring6)
+
+### 什么是Bean的生命周期
+
+Spring其实就是一个管理Bean对象的工厂。它负责对象的创建，对象的销毁等。所谓的生命周期就是：对象从创建开始到最终销毁的整个过程。
+
+- 什么时候创建Bean对象？
+- 创建Bean对象的前后会调用什么方法？
+- Bean对象什么时候销毁？
+- Bean对象的销毁前后调用什么方法？
+
+### 生命周期五步
+
+Bean生命周期的管理，可以参考Spring的源码：AbstractAutowireCapableBeanFactory类的doCreateBean()方法。Bean生命周期可以粗略的划分为五大步：
+- 第一步：实例化Bean
+- 第二步：Bean属性赋值
+- 第三步：初始化Bean
+- 第四步：使用Bean
+- 第五步：销毁Bean
+
+```java
+public class User {
+    private String name;
+
+    public User() {
+        System.out.println("1.实例化Bean");
+    }
+
+    public void setName(String name) {
+        this.name = name;
+        System.out.println("2.Bean属性赋值");
+    }
+
+    public void initBean(){
+        System.out.println("3.初始化Bean");
+    }
+
+    public void destroyBean(){
+        System.out.println("5.销毁Bean");
+    }
+
+}
+```
+
+```xml
+    <!--
+    init-method属性指定初始化方法。
+    destroy-method属性指定销毁方法。
+    -->
+    <bean id="userBean" class="com.powernode.spring6.bean.User" init-method="initBean" destroy-method="destroyBean">
+        <property name="name" value="zhangsan"/>
+    </bean>
+```
+
+编写测试代码
+
+```java
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("spring.xml");
+        User userBean = applicationContext.getBean("userBean", User.class);
+        System.out.println("4.使用Bean");
+        // 只有正常关闭spring容器才会执行销毁方法
+        ClassPathXmlApplicationContext context = (ClassPathXmlApplicationContext) applicationContext;
+        context.close();
+```
+
+- 第一：只有正常关闭spring容器，bean的销毁方法才会被调用。
+- 第二：ClassPathXmlApplicationContext类才有close()方法。
+- 第三：配置文件中的init-method指定初始化方法。destroy-method指定销毁方法。
+
+### 生命周期七步
+
+第3步是初始化Bean的时候在初始化前和初始化后添加代码，可以加入“Bean后处理器”。
+
+![img_1](images/img_1.png)
+
+1. 编写一个类实现BeanPostProcessor类，并且重写before和after方法：
+```java
+public class LogBeanPostProcessor implements BeanPostProcessor {
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("Bean后处理器的before方法执行，即将开始初始化");
+        return bean;
+    }
+
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("Bean后处理器的after方法执行，已完成初始化");
+        return bean;
+    }
+}
+```
+2. 配置xml
+```xml
+<!--配置Bean后处理器。这个后处理器将作用于当前配置文件中所有的bean。-->
+<bean class="com.powernode.spring6.bean.LogBeanPostProcessor"/>
+```
+
+### 生命周期10步
+
+![img.png](images/截屏2023-07-07%2014.15.19.png)
+
+Aware相关的接口包括：BeanNameAware、BeanClassLoaderAware、BeanFactoryAware
+- 当Bean实现了BeanNameAware，Spring会将Bean的名字传递给Bean。
+- 当Bean实现了BeanClassLoaderAware，Spring会将加载该Bean的类加载器传递给Bean。
+- 当Bean实现了BeanFactoryAware，Spring会将Bean工厂对象传递给Bean。
+
+测试以上10步，可以让User类实现5个接口，并实现所有方法：
+- BeanNameAware
+- BeanClassLoaderAware
+- BeanFactoryAware
+- InitializingBean
+- DisposableBean
+
+### 不同作用域对应不同的生命周期管理
+
+Spring 根据Bean的作用域来选择管理方式。
+- singleton作用域的Bean，Spring 能够精确地知道该Bean何时被创建，何时初始化完成，以及何时被销毁；
+- prototype 作用域的 Bean，Spring 只负责创建，当容器创建了 Bean 的实例后，Bean 的实例就交给客户端代码管理，Spring 容器将不再跟踪其生命周期。也就是销毁时候的第9步第10步不会运行
+
+
+### new的对象交给Spring管理
+
+```java
+    // 自己new的对象
+    User user = new User();
+    System.out.println(user);
+
+    // 创建 默认可列表BeanFactory 对象
+    DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
+    // 注册Bean
+    factory.registerSingleton("userBean", user);
+    // 从spring容器中获取bean
+    User userBean = factory.getBean("userBean", User.class);
+    System.out.println(userBean);
+```
+
+## Bean循环依赖
+
+
+A对象中有B属性。B对象中有A属性。这就是循环依赖
+
+1. 通过测试得知：在singleton + set注入的情况下，循环依赖是没有问题的。Spring可以解决这个问题。在这种模式下，相同于提前曝光自己的地址，后面大家都可以直接用了，因为是单例模式，
+所以后面属性赋值之后也能同步。也就是创建之后曝光地址最后赋值。
+
+[RecycleTest.java](recycle/src/main/java/com/nju/spring6/RecycleTest.java)
+
+2. prototype下的set注入产生的循环依赖，需要两个类都是prototype才会出现循环依赖
+
+[RecycleTest.java](recycle/src/main/java/com/nju/spring6/RecycleTest.java)
+
+3. singleton下的构造注入产生的循环依赖
+
+因为构造方法注入会导致实例化对象的过程和对象属性赋值的过程没有分离开，必须在一起完成导致的。
+
+
+### 解决的机理
+
+![截屏2023-07-07 15.05.57_1](images/截屏2023-07-07%2015.05.57_1.png)
+
+Cache of singleton objects: bean name to bean instance. 单例对象的缓存：key存储bean名称，value存储Bean对象【一级缓存】
+Cache of early singleton objects: bean name to bean instance. 早期单例对象的缓存：key存储bean名称，value存储早期的Bean对象【二级缓存】
+Cache of singleton factories: bean name to ObjectFactory. 单例工厂缓存：key存储bean名称，value存储该Bean对应的ObjectFactory对象【三级缓存】
+
+从源码中可以看到，spring会先从一级缓存中获取Bean，如果获取不到，则从二级缓存中获取Bean，如果二级缓存还是获取不到，则从三级缓存中获取之前曝光的ObjectFactory对象，  
+通过ObjectFactory对象获取Bean实例，这样就解决了循环依赖的问题。

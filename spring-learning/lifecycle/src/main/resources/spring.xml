@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+    <bean class="com.nju.spring6.bean.LogBeanPostProcessor"/>
+
+    <!--
+    init-method属性指定初始化方法。
+    destroy-method属性指定销毁方法。
+    -->
+    <bean id="user1Bean" class="com.nju.spring6.bean.User1" init-method="initBean" destroy-method="destroyBean">
+        <property name="name" value="zhangsan"/>
+    </bean>
+
+<!--    <bean id="user2Bean" class="com.nju.spring6.bean.User2" init-method="initBean" destroy-method="destroyBean">-->
+<!--        <property name="name" value="zhangsan"/>-->
+<!--    </bean>-->
+</beans>

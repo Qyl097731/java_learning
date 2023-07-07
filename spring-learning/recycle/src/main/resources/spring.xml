@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="husbandBean" class="com.nju.spring6.bean.Husband" scope="singleton">
+        <property name="name" value="张三"/>
+        <property name="wife" ref="wifeBean"/>
+    </bean>
+    <bean id="wifeBean" class="com.nju.spring6.bean.Wife" scope="singleton">
+        <property name="name" value="小花"/>
+        <property name="husband" ref="husbandBean"/>
+    </bean>
+
+    <bean id="husbandBean1" class="com.nju.spring6.bean.Husband" scope="prototype">
+        <property name="name" value="张三"/>
+        <property name="wife" ref="wifeBean1"/>
+    </bean>
+    <bean id="wifeBean1" class="com.nju.spring6.bean.Wife" scope="prototype">
+        <property name="name" value="小花"/>
+        <property name="husband" ref="husbandBean1"/>
+    </bean>
+</beans>
