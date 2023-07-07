@@ -1,4 +1,4 @@
-package com.nju.factory.simple;
+package com.nju.factory.domain;
 
 /**
  * 武器（抽象产品角色）

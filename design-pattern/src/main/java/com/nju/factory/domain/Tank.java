@@ -1,4 +1,4 @@
-package com.nju.factory.simple;
+package com.nju.factory.domain;
 
 /**
  * 坦克（具体产品角色）

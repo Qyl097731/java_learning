@@ -1,5 +1,10 @@
 package com.nju.factory.simple;
 
+import com.nju.factory.domain.Dagger;
+import com.nju.factory.domain.Fighter;
+import com.nju.factory.domain.Tank;
+import com.nju.factory.domain.Weapon;
+
 /**
  * 工厂类角色
  **/

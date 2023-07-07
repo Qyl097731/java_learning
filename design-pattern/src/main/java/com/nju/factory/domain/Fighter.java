@@ -1,4 +1,4 @@
-package com.nju.factory.simple;
+package com.nju.factory.domain;
 
 /**
  * 战斗机（具体产品角色）
