@@ -54,7 +54,7 @@ Spring在它的AOP模块中提供了对面向切面编程的丰富支持，Sprin
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
         
-        <bean id="userBean" class="com.powernode.spring6.bean.User"/>
+        <bean id="userBean" class="com.nju.spring6.bean.User"/>
     </beans>
     ```
 
@@ -181,18 +181,18 @@ Spring会利用反射调用相应的set方法，并将注入的参数传递给�
 
 2. xml配置
     ```xml
-    <bean id="userDaoBean" class="com.powernode.spring6.dao.UserDao"/>
+    <bean id="userDaoBean" class="com.nju.spring6.dao.UserDao"/>
     <!--自动注入-->
     <!--byType表示根据类型自动装配-->
-    <bean id="accountService" class="com.powernode.spring6.service.AccountService" autowire="byType"/>
-    <bean class="com.powernode.spring6.dao.AccountDao"/>
+    <bean id="accountService" class="com.nju.spring6.service.AccountService" autowire="byType"/>
+    <bean class="com.nju.spring6.dao.AccountDao"/>
     
     <!--byName表示根据类名字自动装配-->
-    <bean id="userService" class="com.powernode.spring6.service.UserService" autowire="byName"/>
-    <bean id="aaa" class="com.powernode.spring6.dao.UserDao"/>
+    <bean id="userService" class="com.nju.spring6.service.UserService" autowire="byName"/>
+    <bean id="aaa" class="com.nju.spring6.dao.UserDao"/>
     
     <!--手动注入-->
-    <bean id="userServiceBean" class="com.powernode.spring6.service.UserService">
+    <bean id="userServiceBean" class="com.nju.spring6.service.UserService">
         <property name="addrs">
             <map>
                 <!--如果key不是简单类型，使用 key-ref 属性-->
@@ -236,8 +236,8 @@ Spring会利用反射调用相应的set方法，并将注入的参数传递给�
     ```
 2. xml 配置
     ```xml
-    <bean id="orderDaoBean" class="com.powernode.spring6.dao.OrderDao"/>
-    <bean id="orderServiceBean" class="com.powernode.spring6.service.OrderService">
+    <bean id="orderDaoBean" class="com.nju.spring6.dao.OrderDao"/>
+    <bean id="orderServiceBean" class="com.nju.spring6.service.OrderService">
       <!--index="0"表示构造方法的第一个参数，将orderDaoBean对象传递给构造方法的第一个参数。-->
       <constructor-arg index="0" name="orderService" ref="orderDaoBean"/>
     </bean>
@@ -266,11 +266,11 @@ Spring会利用反射调用相应的set方法，并将注入的参数传递给�
                 <prop key="password">123456</prop>
             </util:properties>
         
-            <bean id="dataSource1" class="com.powernode.spring6.beans.MyDataSource1">
+            <bean id="dataSource1" class="com.nju.spring6.beans.MyDataSource1">
                 <property name="properties" ref="prop"/>
             </bean>
         
-            <bean id="dataSource2" class="com.powernode.spring6.beans.MyDataSource2">
+            <bean id="dataSource2" class="com.nju.spring6.beans.MyDataSource2">
                 <property name="properties" ref="prop"/>
             </bean>
         </beans> 
@@ -350,7 +350,7 @@ password=root123
 ```properties
     <context:property-placeholder location="jdbc.properties"/>
     
-    <bean id="dataSource" class="com.powernode.spring6.beans.MyDataSource">
+    <bean id="dataSource" class="com.nju.spring6.beans.MyDataSource">
         <property name="driver" value="${driver}"/>
         <property name="url" value="${url}"/>
         <property name="username" value="${username}"/>
@@ -386,7 +386,7 @@ password=root123
    在每一次执行getBean()方法的时候创建Bean对象，调用几次则创建几次。
    
    ```properties
-   <bean id="sb" class="com.powernode.spring6.beans.SpringBean" scope="prototype" />
+   <bean id="sb" class="com.nju.spring6.beans.SpringBean" scope="prototype" />
    ```
    
    ```java
@@ -429,7 +429,7 @@ public class User {
 ```
 
 ```xml
-    <bean id="userBean" class="com.powernode.spring6.bean.User"/>
+    <bean id="userBean" class="com.nju.spring6.bean.User"/>
 ```
 
 ### 工厂模式
@@ -448,7 +448,7 @@ public class VipFactory {
 
 需要指定factory-method的方法
 ```xml
-<bean id="vipBean" class="com.powernode.spring6.bean.VipFactory" factory-method="get"/>
+<bean id="vipBean" class="com.nju.spring6.bean.VipFactory" factory-method="get"/>
 ```
 
 
@@ -468,7 +468,7 @@ public class OrderFactory {
 
 在Spring配置文件中指定factory-bean以及factory-method
 ```xml
-<bean id="orderFactory" class="com.powernode.spring6.bean.OrderFactory"/>
+<bean id="orderFactory" class="com.nju.spring6.bean.OrderFactory"/>
 <bean id="orderBean" factory-bean="orderFactory" factory-method="get"/>
 ```
 
@@ -504,7 +504,7 @@ public class PersonFactoryBean implements FactoryBean<Person> {
 在Spring配置文件中配置FactoryBean。
 
 ```xml
-<bean id="personBean" class="com.powernode.spring6.bean.PersonFactoryBean"/>
+<bean id="personBean" class="com.nju.spring6.bean.PersonFactoryBean"/>
 ```
 
 
@@ -572,7 +572,7 @@ public class User {
     init-method属性指定初始化方法。
     destroy-method属性指定销毁方法。
     -->
-    <bean id="userBean" class="com.powernode.spring6.bean.User" init-method="initBean" destroy-method="destroyBean">
+    <bean id="userBean" class="com.nju.spring6.bean.User" init-method="initBean" destroy-method="destroyBean">
         <property name="name" value="zhangsan"/>
     </bean>
 ```
@@ -617,7 +617,7 @@ public class LogBeanPostProcessor implements BeanPostProcessor {
 2. 配置xml
 ```xml
 <!--配置Bean后处理器。这个后处理器将作用于当前配置文件中所有的bean。-->
-<bean class="com.powernode.spring6.bean.LogBeanPostProcessor"/>
+<bean class="com.nju.spring6.bean.LogBeanPostProcessor"/>
 ```
 
 ### 生命周期10步
@@ -692,3 +692,141 @@ Cache of singleton factories: bean name to ObjectFactory. 单例工厂缓存：k
 ## 手写Spring框架
 
 Spring IoC容器的实现原理：工厂模式 + 解析XML + 反射机制。
+
+[ClassPathXmlApplicationContext](myspring/src/main/java/com/nju/spring6/core/ClassPathXmlApplicationContext.java)
+
+## Spring IoC注解式开发
+
+### 注解回顾
+
+```java
+@Target(value = {ElementType.TYPE})
+@Retention(value = RetentionPolicy.RUNTIME)
+public @interface Component {
+    String value();
+}
+```
+
+Target注解和Retention注解，这两个注解被称为元注解。
+
+Target注解用来设置Component注解可以出现的位置，以上代表表示Component注解只能用在类和接口上。
+
+Retention注解用来设置Component注解的保持性策略，以上代表Component注解可以被反射机制读取。
+
+String value(); 是Component注解中的一个属性。该属性类型String，属性名是value。
+
+#### 通过反射机制读取注解
+
+[注解案例](annotation/src/main/java/com/nju/spring6/Test.java)
+
+### spring中常用的注解 
+
+@Controller、@Service、@Repository这三个注解都是@Component注解的别名。
+
+也就是说：这四个注解的功能都一样。用哪个都可以。
+只是为了增强程序的可读性，建议：
+- 控制器类上使用：Controller
+- service类上使用：Service
+- dao类上使用：Repository
+
+他们都是只有一个value属性。value属性用来指定bean的id，也就是bean的名字。
+
+开启bean的注解扫描
+```properties
+<context:component-scan base-package="com.nju.spring6.bean"/>
+```
+
+只想扫描指定的注解
+```properties
+    <context:component-scan base-package="com.powernode.spring6.bean3" use-default-filters="false">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+``` 
+use-default-filters="false" 表示：不再spring默认实例化规则，即使有Component、Controller、Service、Repository这些注解标注，也不再实例化。
+<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/> 表示只有Controller进行实例化。
+
+use-default-filters="true" 表示：使用spring默认的规则，只要有Component、Controller、Service、Repository中的任意一个注解标注，则进行实例化。
+```properties
+<context:component-scan base-package="com.powernode.spring6.bean3">
+   <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Repository"/>
+   <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Service"/>
+   <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+</context:component-scan>
+```
+
+### 负责注入的注解
+
+#### @Value
+
+@Value注解可以出现在属性上、setter方法上、以及构造方法的形参上。
+```java
+@Component
+public class User {
+    @Value(value = "zhangsan")
+    private String name;
+    @Value("20")
+    private int age;
+}
+
+@Component
+public class User {
+
+   private String name;
+
+   private int age;
+
+   @Value("李四")
+   public void setName(String name) {
+      this.name = name;
+   }
+
+   @Value("30")
+   public void setAge(int age) {
+      this.age = age;
+   }
+}
+
+@Component
+public class User {
+
+   private String name;
+
+   private int age;
+
+   public User(@Value("隔壁老王") String name, @Value("33") int age) {
+      this.name = name;
+      this.age = age;
+   }
+}
+```
+
+#### @Autowired与@Qualifier
+
+单独使用@Autowired注解，默认根据类型装配。【默认是byType】
+
+```java
+    // 在属性上注入
+    @Autowired 
+    private UserDao userDao;
+    // 出现在setter方法上
+    @Autowired
+    public void setUserDao(UserDao userDao) {
+        this.userDao = userDao;
+    }
+    // 构造方法上.当有参数的构造方法只有一个时，@Autowired注解可以省略。
+    @Autowired
+    public UserService(UserDao userDao) {
+        this.userDao = userDao;
+    }
+    // 标注在构造方法的形参上
+    public UserService(@Autowired UserDao userDao) {
+        this.userDao = userDao;
+    }
+```
+
+<b>@Autowired注解和@Qualifier注解联合起来才可以根据名称进行装配，在@Qualifier注解中指定Bean名称。</b>
+
+```java
+@Autowired
+@Qualifier("userDaoForOracle") // 这个是bean的名字。
+```

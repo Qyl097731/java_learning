@@ -12,6 +12,7 @@
         <module>lifecycle</module>
         <module>recycle</module>
         <module>myspring</module>
+        <module>annotation</module>
     </modules>
 
     <packaging>pom</packaging>
