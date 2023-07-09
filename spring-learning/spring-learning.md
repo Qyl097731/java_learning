@@ -738,7 +738,7 @@ String value(); 是Component注解中的一个属性。该属性类型String，�
 
 只想扫描指定的注解
 ```properties
-    <context:component-scan base-package="com.powernode.spring6.bean3" use-default-filters="false">
+    <context:component-scan base-package="com.nju.spring6.bean3" use-default-filters="false">
         <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
     </context:component-scan>
 ``` 
@@ -747,7 +747,7 @@ use-default-filters="false" 表示：不再spring默认实例化规则，即使�
 
 use-default-filters="true" 表示：使用spring默认的规则，只要有Component、Controller、Service、Repository中的任意一个注解标注，则进行实例化。
 ```properties
-<context:component-scan base-package="com.powernode.spring6.bean3">
+<context:component-scan base-package="com.nju.spring6.bean3">
    <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Repository"/>
    <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Service"/>
    <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
@@ -830,3 +830,183 @@ public class User {
 @Autowired
 @Qualifier("userDaoForOracle") // 这个是bean的名字。
 ```
+
+#### @Resource
+
+- @Resource注解是JDK扩展包中的,@Autowired注解是Spring框架自己的。
+- @Resource注解默认根据名称装配byName，未指定name时，使用属性名作为name。通过name找不到的话会自动启动通过类型byType装配。
+- @Autowired注解默认根据类型装配byType，如果想根据名称装配，需要配合@Qualifier注解一起用。
+- @Resource注解用在属性上、setter方法上。
+- @Autowired注解用在属性上、setter方法上、构造方法上、构造方法参数上。
+
+@Resource依赖
+```properties
+<!--spring 6-->
+<dependency>
+  <groupId>jakarta.annotation</groupId>
+  <artifactId>jakarta.annotation-api</artifactId>
+  <version>2.1.1</version>
+</dependency>
+
+<!--spring 5-->
+<dependency>
+   <groupId>javax.annotation</groupId>
+   <artifactId>javax.annotation-api</artifactId>
+   <version>1.3.2</version>
+</dependency>
+```
+
+```java
+    // 默认就是查找userDao，找不到的时候根据UserDao接口类型查找
+    @Resource
+    private UserDao userDao;
+
+    // 默认找set方法名中的userDao
+    @Resource
+    public void setUserDao(UserDao userDao) {
+        this.userDao = userDao;
+    }
+```
+
+### 全注解开发
+
+写一个配置类来代替配置文件。
+
+```java
+   @Configuration
+   @ComponentScan({"com.nju.spring6.dao", "com.nju.spring6.service"})
+   public class Spring6Configuration {
+   }
+
+// 测试类也相应改变
+    ApplicationContext applicationContext = new AnnotationConfigApplicationContext(Spring6Configuration.class);
+    UserService userService = applicationContext.getBean("userService", UserService.class);
+    userService.save();
+```
+
+## JdbcTemplate
+
+pom依赖
+```xml
+     <!--新增的依赖:mysql驱动-->
+     <dependency>
+         <groupId>mysql</groupId>
+         <artifactId>mysql-connector-java</artifactId>
+         <version>8.0.30</version>
+     </dependency>
+     <!--新增的依赖：spring jdbc，这个依赖中有JdbcTemplate-->
+     <dependency>
+         <groupId>org.springframework</groupId>
+         <artifactId>spring-jdbc</artifactId>
+         <version>6.0.0-M2</version>
+     </dependency>
+```
+
+spring.xml
+```xml
+<bean id="myDataSource" class="com.nju.spring6.jdbc.MyDataSource">
+   <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+   <property name="url" value="jdbc:mysql://localhost:3306/spring6"/>
+   <property name="username" value="root"/>
+   <property name="password" value="123456"/>
+</bean>
+<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+    <property name="dataSource" ref="myDataSource"/>
+</bean>
+```
+
+JdbcTemplate中有一个DataSource属性，这个属性是数据源，我们都知道连接数据库需要Connection对象，而生成Connection对象是数据源负责的。
+数据源有阿里巴巴的druid连接池，c3p0，dbcp等
+
+### 基础SQL
+```java
+     // 获取JdbcTemplate对象
+     ApplicationContext applicationContext = new ClassPathXmlApplicationContext("spring.xml");
+     JdbcTemplate jdbcTemplate = applicationContext.getBean("jdbcTemplate", JdbcTemplate.class);
+     // 注意：insert delete update的sql语句，都是执行update方法。
+
+     // 增加
+     // 第一个参数：要执行的SQL语句。（SQL语句中可能会有占位符 ? ）
+     // 第二个参数：可变长参数，参数的个数可以是0个，也可以是多个。一般是SQL语句中有几个问号，则对应几个参数。
+     String sql = "insert into t_user(id,real_name,age) values(?,?,?)";
+     int count = jdbcTemplate.update(sql, null, "张三", 30);
+     
+     // 删除
+     String sql = "delete from t_user where id = ?";
+     int count = jdbcTemplate.update(sql, 1);
+     
+     // 改
+     String sql = "update t_user set real_name = ?, age = ? where id = ?";
+     int count = jdbcTemplate.update(sql, "张三丰", 55, 1);
+     
+     // 查一个对象
+     // 第一个参数：sql语句
+     // 第二个参数：Bean属性值和数据库记录行的映射对象。在构造方法中指定映射的对象类型。
+     // 第三个参数：可变长参数，给sql语句的占位符问号传值。
+     String sql = "select id, real_name, age from t_user where id = ?";
+     User user = jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(User.class), 2);
+     
+     // 查多个对象
+     String sql = "select id, real_name, age from t_user";
+     List<User> users = jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(User.class));
+     
+     // 查询一个值
+     String sql = "select count(1) from t_user";
+     Integer count = jdbcTemplate.queryForObject(sql, int.class);
+     
+     // 批量添加
+     String sql = "insert into t_user(id,real_name,age) values(?,?,?)";
+     Object[] objs1 = {null, "小花", 20};
+     Object[] objs2 = {null, "小明", 21};
+     Object[] objs3 = {null, "小刚", 22};
+     List<Object[]> list = new ArrayList<>();
+     list.add(objs1);
+     list.add(objs2);
+     list.add(objs3);
+     int[] count = jdbcTemplate.batchUpdate(sql, list);
+
+     // 批量修改
+     String sql = "update t_user set real_name = ?, age = ? where id = ?";
+     Object[] objs1 = {"小花11", 10, 2};
+     Object[] objs2 = {"小明22", 12, 3};
+     Object[] objs3 = {"小刚33", 9, 4};
+     List<Object[]> list = new ArrayList<>();
+     list.add(objs1);
+     list.add(objs2);
+     list.add(objs3);
+     int[] count = jdbcTemplate.batchUpdate(sql, list);
+
+     // 批量删除
+     String sql = "delete from t_user where id = ?";
+     Object[] objs1 = {2};
+     Object[] objs2 = {3};
+     Object[] objs3 = {4};
+     List<Object[]> list = new ArrayList<>();
+     list.add(objs1);
+     list.add(objs2);
+     list.add(objs3);
+     int[] count = jdbcTemplate.batchUpdate(sql, list);
+
+    // 回调函数
+   String sql = "select id, real_name, age from t_user where id = ?";
+   User user = jdbcTemplate.execute(sql, new PreparedStatementCallback<User>() {
+   @Override
+   public User doInPreparedStatement(PreparedStatement ps) throws SQLException, DataAccessException {
+      User user = null;
+      ps.setInt(1, 5);
+      ResultSet rs = ps.executeQuery();
+         if (rs.next()) {
+            user = new User();
+            user.setId(rs.getInt("id"));
+            user.setRealName(rs.getString("real_name"));
+            user.setAge(rs.getInt("age"));
+      }
+      return user;
+      }
+   });
+```
+
+
+
+
+
