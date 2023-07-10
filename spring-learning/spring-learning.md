@@ -1065,15 +1065,153 @@ execution([访问控制权限修饰符] 返回值类型 [全限定类名]方法�
 
 ```java
 // service包下所有的类中以delete开始的所有方法
-execution(public * com.powernode.mall.service.*.delete*(..))
+execution(public * com.nju.mall.service.*.delete*(..))
 // mall包下所有的类的所有的方法
-execution(* com.powernode.mall..*(..))
+execution(* com.nju.mall..*(..))
 // 所有类的所有方法
 execution(* *(..))
 ```
 
 ### 使用Spring的AOP
+
+简单案例见aop模块
+
 Spring对AOP的实现包括以下3种方式：
-- 第一种方式：Spring框架结合AspectJ框架实现的AOP，基于注解方式。
-- 第二种方式：Spring框架结合AspectJ框架实现的AOP，基于XML方式。
-- 第三种方式：Spring框架自己实现的AOP，基于XML配置方式。
+- 第一种方式：Spring框架结合AspectJ框架实现的AOP，基于[注解方式](aop/src/main/java/com/nju/spring6/service/Spring6Configuration.java)。
+- 第二种方式：Spring框架结合AspectJ框架实现的AOP，基于[XML方式](aop/src/main/resources/spring-aspectj-aop-annotation.xml)。
+  - 第三种方式：Spring框架自己实现的AOP，基于XML配置方式。
+    ```properties
+      <!--纳入spring bean管理-->
+      <bean id="vipService" class="com.nju.spring6.service.VipService"/>
+      <bean id="timerAspect" class="com.nju.spring6.service.TimerAspect"/>
+
+      <!--aop配置-->
+      <aop:config>
+          <!--切点表达式-->
+          <aop:pointcut id="p" expression="execution(* com.nju.spring6.service.VipService.*(..))"/>
+          <!--切面-->
+          <aop:aspect ref="timerAspect">
+              <!--切面=通知 + 切点-->
+              <aop:around method="time" pointcut-ref="p"/>
+          </aop:aspect>
+      </aop:config>
+      ```
+  
+      ```java
+      // 负责计时的切面类
+      public class TimerAspect {
+    
+          public void time(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+              long begin = System.currentTimeMillis();
+              //执行目标
+              proceedingJoinPoint.proceed();
+              long end = System.currentTimeMillis();
+              System.out.println("耗时"+(end - begin)+"毫秒");
+          }
+      }
+  
+      // 目标类
+      public class VipService {
+         public void add(){
+           System.out.println("保存vip信息。");
+         }
+      }
+      ```
+
+开启自动代理之后，凡事带有@Aspect注解的bean都会生成代理对象。
+proxy-target-class="true" 表示采用cglib动态代理。
+proxy-target-class="false" 表示采用jdk动态代理。默认值是false。当没有接口的时候，也会自动选择cglib生成代理类。
+```properties
+<!--开启自动代理-->
+<aop:aspectj-autoproxy proxy-target-class="true"/>
+```
+#### 通知类型
+通知类型包括：
+- 前置通知：@Before 目标方法执行之前的通知
+- 后置通知：@AfterReturning 目标方法执行之后的通知
+- 环绕通知：@Around 目标方法之前添加通知，同时目标方法执行之后添加通知。
+- 异常通知：@AfterThrowing 发生异常之后执行的通知
+- 最终通知：@After 放在finally语句块中的通知
+
+当发生异常之后，最终通知也会执行，因为最终通知@After会出现在finally语句块中。
+出现异常之后，后置通知和环绕通知的结束部分不会执行。
+
+#### 切面的先后顺序
+
+业务流程当中不一定只有一个切面，可能有的切面控制事务，有的记录日志，有的进行安全控制，如果多个切面的话，可以使用@Order注解来标识切面类，为@Order注解的value指定一个整数型的数字，数字越小，优先级越高。
+
+<img src="./images/1689003683791.jpg"/>
+
+## Spring对事务的支持
+
+### 事务属性
+
+- 事务传播行为
+- 事务隔离级别
+- 事务超时
+- 只读事务
+- 设置出现哪些异常回滚事务
+- 设置出现哪些异常不回滚事务
+
+#### 传播行为
+
+```java
+@Transactional(propagation = Propagation.REQUIRED)
+```
+- REQUIRED：支持当前事务，如果不存在就新建一个(默认)【没有就新建，有就加入】
+- SUPPORTS：支持当前事务，如果当前没有事务，就以非事务方式执行【有就加入，没有就不管了】
+- MANDATORY：必须运行在一个事务中，如果当前没有事务正在发生，将抛出一个异常【有就加入，没有就抛异常】
+- REQUIRES_NEW：开启一个新的事务，如果一个事务已经存在，则将这个存在的事务挂起【不管有没有，直接开启一个新事务，开启的新事务和之前的事务不存在嵌套关系，之前事务被挂起】
+- NOT_SUPPORTED：以非事务方式运行，如果有事务存在，挂起当前事务【不支持事务，存在就挂起】
+- NEVER：以非事务方式运行，如果有事务存在，抛出异常【不支持事务，存在就抛异常】
+- NESTED：如果当前正有一个事务在进行中，则该方法应当运行在一个嵌套式事务中。被嵌套的事务可以独立于外层事务进行提交或回滚。如果外层事务不存在，行为就像REQUIRED
+  一样。【有事务的话，就在这个事务里再嵌套一个完全独立的事务，嵌套的事务可以独立的提交和回滚。没有事务就和REQUIRED一样。】
+
+#### 事务隔离级别
+
+```java
+@Transactional(isolation = Isolation.READ_COMMITTED)
+```
+数据库中读取数据存在的三大问题：（三大读问题）
+- 脏读：读取没有提交的数据，叫做脏读。
+- 不可重复读：在同一个事务当中，第一次和第二次读取的数据不一样。
+- 幻读：读到的数据量变了。
+事务隔离级别包括四个级别：
+- 读未提交：READ_UNCOMMITTED，存在脏读问题，能够读取到其它事务未提交的数据。
+- 读提交：READ_COMMITTED，解决了脏读问题，存在不可重复读问题。
+- 可重复读：REPEATABLE_READ ，解决了不可重复读、脏读，存在幻读问题。
+- 序列化：SERIALIZABLE 解决了不可重复读、脏读、幻读，顺序执行，不支持并发。
+
+### Spring实现事务的两种方式
+- 编程式事务
+通过编写代码的方式来实现事务的管理。
+- 声明式事务
+  - 基于注解方式
+  - 基于XML配置方式
+
+Spring对事务的管理底层实现方式是基于AOP实现的，对AOP的方式进行了封装。
+
+PlatformTransactionManager接口：spring事务管理器的核心接口。在Spring6中它有两个实现：
+- DataSourceTransactionManager：支持JdbcTemplate、MyBatis、Hibernate等事务管理。
+- JtaTransactionManager：支持分布式事务管理。
+如果要在Spring6中使用JdbcTemplate，就要使用DataSourceTransactionManager来管理事务。（Spring内置写好了，可以直接用。）
+
+#### 声明式事务
+
+```properties
+<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+  <property name="dataSource" ref="dataSource"/>
+</bean>
+
+<tx:annotation-driven transaction-manager="transactionManager"/>
+```
+
+```java
+@Service("accountService")
+@Transactional
+public class AccountServiceImpl implements AccountService {
+
+    @Resource(name = "accountDao")
+    private AccountDao accountDao;
+}
+```

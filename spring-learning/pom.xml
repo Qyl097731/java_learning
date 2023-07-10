@@ -13,6 +13,7 @@
         <module>recycle</module>
         <module>myspring</module>
         <module>annotation</module>
+        <module>aop</module>
     </modules>
 
     <packaging>pom</packaging>
