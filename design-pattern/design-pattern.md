@@ -60,8 +60,50 @@ Java学习过程中遇到的一些书中提及的设计模式汇总
 
 #### 静态代理
 
+假设项目已上线，并且运行正常，只是客户反馈系统有一些地方运行较慢，要求项目组对系统进行优化。于是项目负责人就下达了这个需求。  
+首先需要搞清楚是哪些业务方法耗时较长，于是让我们统计每个业务方法所耗费的时长。如果是你，你该怎么做呢？
+
+- 第一种方案：直接修改Java源代码，在每个业务方法中添加统计逻辑，需求可以满足，但显然是违背了OCP开闭原则。这种方案不可取。
+- 第二种方案：编写一个子类继承OrderServiceImpl，在子类中重写每个方法，这种方式可以解决，但是存在两个问题：
+  - 第一个问题：假设系统中有100个这样的业务类，需要提供100个子类，并且之前写好的创建Service对象的代码，都要修改为创建子类对象。
+  - 第二个问题：由于采用了继承的方式，导致代码之间的耦合度较高。
+- 采用[代理模式](src/main/java/com/nju/proxy/stati/OrderServiceProxy.java)，符合OCP开闭原则，同时采用的是关联关系，所以程序的耦合度较低。所以这种方案是被推荐的。
+  - 如果系统中业务接口很多，一个接口对应一个代理类，显然也是不合理的，会导致类爆炸
+
 #### 动态代理
 
+在程序运行阶段，在内存中动态生成代理类，被称为动态代理，目的是为了减少代理类的数量。解决代码复用的问题。以后程序员只需要关注核心业务的编写了，像这种统计时间的代码根本不需要关注。因为这种统计时间的代码只需要在调用处理器中编写一次即可。
+
+在内存当中动态生成类的技术常见的包括：
+- JDK动态代理技术：只能代理接口。
+- CGLIB动态代理技术：可以在运行期扩展Java类与实现Java接口。它既可以代理接口，又可以代理类，底层是通过继承的方式实现的。性能比JDK动态代理要好。（底层有一个小而快的字节码处理框架ASM。）
+
+##### JDK动态代理
+
+在动态代理中代理类是可以动态生成的。这个类不需要写。我们直接写[客户端](src/main/java/com/nju/proxy/dynamic/jdk/Client.java)即可。
+
+`OrderService orderServiceProxy = Proxy.newProxyInstance(target.getClass().getClassLoader(), target.getClass().getInterfaces()`, 调用处理器对象);
+这行代码做了两件事：
+- 第一件事：在内存中生成了代理类的字节码
+- 第二件事：创建代理对象
+Proxy类全名：java.lang.reflect.Proxy。这是JDK提供的一个类（所以称为JDK动态代理）。主要是通过这个类在内存中生成代理类的字节码。其中newProxyInstance()方法有三个参数：
+- 第一个参数：类加载器。在内存中生成了字节码，要想执行这个字节码，也是需要先把这个字节码加载到内存当中的。所以要指定使用哪个类加载器加载。
+- 第二个参数：接口类型。代理类和目标类实现相同的接口，所以要通过这个参数告诉JDK动态代理生成的类要实现哪些接口。
+- 第三个参数：调用处理器。这是一个JDK动态代理规定的接口，接口全名：java.lang.reflect.InvocationHandler。显然这是一个回调接口，也就是说调用这个接口中方法的程序已经写好了，就差这个接口的实现类了。
+
+##### CGLIB动态代理
+
+[CGLIB](src/main/java/com/nju/proxy/dynamic/cglib/Client.java)既可以代理接口，又可以代理类。底层采用继承的方式实现。所以被代理的目标类不能使用final修饰。高版本需要添加两个启动参数
+- --add-opens java.base/java.lang=ALL-UNNAMED
+- --add-opens java.base/sun.net.util=ALL-UNNAMED
+
+```xml
+<dependency>
+  <groupId>cglib</groupId>
+  <artifactId>cglib</artifactId>
+  <version>3.3.0</version>
+</dependency>
+```
 
 ## 装饰模式
 
