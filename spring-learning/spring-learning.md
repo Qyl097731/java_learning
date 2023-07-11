@@ -1182,6 +1182,53 @@ proxy-target-class="false" 表示采用jdk动态代理。默认值是false。当
 - 可重复读：REPEATABLE_READ ，解决了不可重复读、脏读，存在幻读问题。
 - 序列化：SERIALIZABLE 解决了不可重复读、脏读、幻读，顺序执行，不支持并发。
 
+### 事务超时
+
+```java
+// 事务的超时时间为10秒。指的是在当前事务当中，最后一条DML语句执行之前的时间。
+@Transactional(timeout = 10)
+
+// 不会记录睡眠时间
+@Transactional(timeout = 10) // 设置事务超时时间为10秒。
+public void save(Account act) {
+    accountDao.insert(act);
+    // 睡眠一会
+    try {
+        Thread.sleep(1000 * 15);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+}
+
+@Transactional(timeout = 10) // 设置事务超时时间为10秒。
+public void save(Account act) {
+    // 睡眠一会
+    try {
+        Thread.sleep(1000 * 15);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    accountDao.insert(act);
+}
+```
+
+### 只读事务
+只允许select语句执行，delete insert update均不可执行。该特性的作用是：启动spring的优化策略。提高select语句执行效率。
+```java
+@Transactional(readOnly = true)
+```
+
+### 异常回滚
+
+```java
+// 只有发生RuntimeException异常或该异常的子类异常才回滚
+@Transactional(rollbackFor = RuntimeException.class)
+
+// NullPointerException或该异常的子类异常不回滚，其他异常则回滚。
+@Transactional(noRollbackFor = NullPointerException.class)
+
+```
+
 ### Spring实现事务的两种方式
 - 编程式事务
 通过编写代码的方式来实现事务的管理。
@@ -1196,7 +1243,7 @@ PlatformTransactionManager接口：spring事务管理器的核心接口。在Spr
 - JtaTransactionManager：支持分布式事务管理。
 如果要在Spring6中使用JdbcTemplate，就要使用DataSourceTransactionManager来管理事务。（Spring内置写好了，可以直接用。）
 
-#### 声明式事务
+#### 声明式事务基于注解
 
 ```properties
 <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
@@ -1215,3 +1262,146 @@ public class AccountServiceImpl implements AccountService {
     private AccountDao accountDao;
 }
 ```
+
+#### 全注解事务
+
+```java
+@Configuration
+@ComponentScan("com.powernode.bank")
+@EnableTransactionManagement
+public class Spring6Config {
+
+    @Bean
+    public DataSource getDataSource(){
+        DruidDataSource dataSource = new DruidDataSource();
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        dataSource.setUrl("jdbc:mysql://localhost:3306/spring6");
+        dataSource.setUsername("root");
+        dataSource.setPassword("root");
+        return dataSource;
+    }
+
+    @Bean(name = "jdbcTemplate")
+    public JdbcTemplate getJdbcTemplate(DataSource dataSource){
+        JdbcTemplate jdbcTemplate = new JdbcTemplate();
+        jdbcTemplate.setDataSource(dataSource);
+        return jdbcTemplate;
+    }
+
+    @Bean
+    public DataSourceTransactionManager getDataSourceTransactionManager(DataSource dataSource){
+        DataSourceTransactionManager dataSourceTransactionManager = new DataSourceTransactionManager();
+        dataSourceTransactionManager.setDataSource(dataSource);
+        return dataSourceTransactionManager;
+    }
+}
+
+@Test
+public void testNoXml(){
+    ApplicationContext applicationContext = new AnnotationConfigApplicationContext(Spring6Config.class);
+    AccountService accountService = applicationContext.getBean("accountService", AccountService.class);
+    try {
+        accountService.transfer("act-001", "act-002", 10000);
+        System.out.println("转账成功");
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
+
+#### 声明式事务基于XML
+
+不需要显示@Transaction注解了
+```properties
+    <context:component-scan base-package="com.powernode.bank"/>
+
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://localhost:3306/spring6"/>
+        <property name="username" value="root"/>
+        <property name="password" value="root"/>
+    </bean>
+
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--配置事务管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--配置通知-->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+        <tx:attributes>
+            <tx:method name="save*" propagation="REQUIRED" rollback-for="java.lang.Throwable"/>
+            <tx:method name="del*" propagation="REQUIRED" rollback-for="java.lang.Throwable"/>
+            <tx:method name="update*" propagation="REQUIRED" rollback-for="java.lang.Throwable"/>
+            <tx:method name="transfer*" propagation="REQUIRED" rollback-for="java.lang.Throwable"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!--配置切面-->
+    <aop:config>
+        <aop:pointcut id="txPointcut" expression="execution(* com.powernode.bank.service..*(..))"/>
+        <!--切面 = 通知 + 切点-->
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut"/>
+    </aop:config>
+
+```
+
+
+## Spring & JUnit
+
+```java
+// JUnit 4
+// 在单元测试类上使用这两个注解之后，在单元测试类中的属性上可以使用@Autowired。比较方便。
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:spring.xml")
+
+// JUnit 5 
+// 在JUnit5当中，可以使用Spring提供的以下两个注解，标注到单元测试类上，这样在类当中就可以使用@Autowired注解了。
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration("classpath:spring.xml")
+```
+
+## Spring中的设计模式
+
+### 简单工厂模式
+BeanFactory的getBean()方法，通过唯一标识来获取Bean对象。是典型的简单工厂模式（静态工厂模式）；
+
+### 工厂方法模式
+FactoryBean是典型的工厂方法模式。在配置文件中通过factory-method属性来指定工厂方法，该方法是一个实例方法。
+
+### 单例模式
+
+Spring用的是双端锁进行Bean的循环依赖的解决
+
+### 代理模式
+
+Spring的AOP就是使用了动态代理实现的
+
+### 装饰器模式
+
+JavaSE中的IO流是非常典型的装饰器模式。
+
+Spring 中配置 DataSource 的时候，这些dataSource可能是各种不同类型的，比如不同的数据库：Oracle、SQL Server、MySQL等，也可能是不同的数据源：比如apache 提供的org.apache.commons.dbcp.BasicDataSource、spring提供的org.springframework.jndi.JndiObjectFactoryBean等。
+这时，能否在尽可能少修改原有类代码下的情况下，做到动态切换不同的数据源？此时就可以用到装饰者模式。
+
+<br>Spring中类名中带有：Decorator和Wrapper单词的类，都是装饰器模式。</br>
+
+### 观察者模式
+
+当一个对象的状态发生改变时，所有依赖于它的对象都得到通知并自动更新。Spring中观察者模式一般用在listener的实现。
+
+Spring中的事件编程模型就是观察者模式的实现。在Spring中定义了一个ApplicationListener接口，用来监听Application的事件，Application其实就是ApplicationContext，ApplicationContext内置了几个事件，其中比较容易理解的是：ContextRefreshedEvent、ContextStartedEvent、ContextStoppedEvent、ContextClosedEvent
+
+### 策略模式
+
+getHandler是HandlerMapping接口中的唯一方法，用于根据请求找到匹配的处理器。
+比如我们自己写了AccountDao接口，然后这个接口下有不同的实现类：AccountDaoForMySQL，AccountDaoForOracle。对于service来说不需要关心底层具体的实现，只需要面向AccountDao接口调用，底层可以灵活切换实现，这就是策略模式。
+
+
+### 模板方法模式
+
+Spring中的JdbcTemplate类就是一个模板类。它就是一个模板方法设计模式的体现。在模板类的模板方法execute中编写核心算法，具体的实现步骤在子类中完成。
