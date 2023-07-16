@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mappings xmlns="http://dozer.sourceforge.net"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://dozer.sourceforge.net
+          http://dozer.sourceforge.net/schema/beanmapping.xsd">
+    <!--描述两个类中属性的对应关系，对于两个类中同名的属性可以不映射-->
+    <mapping date-format="yyyy-MM-dd">
+        <class-a>com.nju.domain.Student</class-a>
+        <class-b>com.nju.domain.StudentDTO</class-b>
+        <field>
+            <a>name</a>
+            <b>nam</b>
+        </field>
+        <field>
+            <a>address</a>
+            <b>address</b>
+            <a-hint>com.nju.domain.Address</a-hint>
+            <b-hint>com.nju.domain.AddressDTO</b-hint>
+        </field>
+    </mapping>
+</mappings>
