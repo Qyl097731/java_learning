@@ -9,7 +9,7 @@ import static java.lang.Thread.sleep;
  * @author qiuyiliang
  */
 public class GcTest {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         List<Order> orderList = new ArrayList<>();
         for (int i = 0; i < 7000000; i++) {
             Order order = new Order();
@@ -23,7 +23,7 @@ public class GcTest {
         List<Order> statisticOrders = statisticOrder(filteredOrders);
     }
 
-    private static List<Order> statisticOrder(List<Order> filteredOrders) {
+    private static List<Order> statisticOrder(List<Order> filteredOrders) throws InterruptedException {
         List<Order> statisticOrders = new ArrayList<>();
         for (int i = 0; i < 10000; i++) {
             for (int j = 0; j < 300; j++) {
