@@ -228,7 +228,7 @@ final void lock() {
         acquire(1);
 }
 ```
-### 2.0 JEP 269: Convenience Factory Methods for Collections
+### 1.10 JEP 269: Convenience Factory Methods for Collections
 
 #### 简介
 通过工厂方法，简化集合初始化。
@@ -270,10 +270,10 @@ public class CollectionsExample {
 }
 ```
 
-### 2.1 JEP 271: Unified GC Logging
+### 1.11 JEP 271: Unified GC Logging
 提供统一的GC日志API。`log_info(gc, heap, ergo)("Heap expanded");` 通过GC tag的来控制打印哪些内容。
 
-### 2.2 JEP 280: Indify String Concatenation
+### 1.12 JEP 280: Indify String Concatenation
 
 #### 简介
 
@@ -320,7 +320,7 @@ java.lang.String m(java.lang.String, int);
 - 减少内存开销：避免了大量的StringBuilder对象的创建和销毁，降低了GC压力。
 - 灵活性：运行时优化允许JVM根据具体情况选择最佳的连接策略，适应不同的硬件和JVM实现。
 
-### 2.3 JEP 285: Spin-Wait Hints
+### 1.13 JEP 285: Spin-Wait Hints
 #### 简介
 引入了“旋转等待提示”（Spin-Wait Hints），即在多线程编程中提供一种机制，通过标准化的方法向底层处理器传达线程处于“自旋等待”（spin-wait）的状态，在 `java.lang.Thread.onSpinWait() `中实现自旋等待提示。
 
@@ -424,7 +424,7 @@ public class StreamApiExample {
 
 ## JDK11
 
-### 2.1 JEP 181: Nest-Based Access Control
+### 3.1 JEP 181: Nest-Based Access Control
 #### 简介
 旨在解决 Java 中内部类与其外部类之间访问权限的问题。
 
@@ -471,13 +471,13 @@ public class com.nju.jdk11.Outer {
 }
 
 ```
-### 2.2 JEP 309: Dynamic Class-File Constants
+### 3.2 JEP 309: Dynamic Class-File Constants
 引入了动态常量（Dynamic Constants）的概念，通过扩展 Java 类文件格式，使常量池能够包含动态计算的常量。动态常量的类型是 `CONSTANT_Dynamic`，它通过引导方法（Bootstrap Method）动态计算并初始化其值，这个过程就跟动态调用一样，允许在 Java 类文件中定义常量时进行延迟计算，以提高灵活性和效率。
 
-### 2.3 JEP 318: Epsilon: A No-Op Garbage Collector (Experimental)
+### 3.3 JEP 318: Epsilon: A No-Op Garbage Collector (Experimental)
 开发一个处理内存分配但不实现任何实际内存回收机制的GC。一旦可用的Java堆耗尽，JVM将关闭。
 
-### 2.4 JEP 321: HTTP Client
+### 3.4 JEP 321: HTTP Client
 
 #### 简介
 对JDK9引入的HTTP Client进行最终的定稿。
@@ -566,7 +566,7 @@ public class HttpClientExamples {
 
 ```
 
-### 2.5 JEP 323: Local-Variable Syntax for Lambda Parameters
+### 3.5 JEP 323: Local-Variable Syntax for Lambda Parameters
 
 #### 简介
 允许在 lambda 表达式的参数中使用局部变量类型推断。这意味着你可以在 lambda 参数列表中使用 `var `关键字，让编译器自动推断参数的类型。这一改进与 Java 10 引入的局部变量类型推断（即 `var `关键字）保持一致，提高了代码的简洁性和一致性
@@ -595,11 +595,11 @@ public class VarExample {
 }
 ```
 
-### 2.6 JEP 330: Launch Single-File Source-Code Programs
+### 3.6 JEP 330: Launch Single-File Source-Code Programs
 
 引入了一种新的发布模式，使得可以直接运行包含 main 方法的单文件 Java 源代码程序，而不需要先编译成字节码，只需运行 `java <filename>.java` 即可。
 
-### 2.7 JEP 333: ZGC: A Scalable Low-Latency Garbage Collector (Experimental)
+### 3.7 JEP 333: ZGC: A Scalable Low-Latency Garbage Collector (Experimental)
 ZGC是一个并发的、不分代、基于区域的垃圾收集器，基于标记整理算法。STD仅限于root扫描阶段，因此GC停顿时间不会随着堆或活动集的大小而增加。但是后面带了Experimental，说明还不建议用到生产环境。
 
 旨在实现以下几点：
