@@ -424,3 +424,188 @@ public class StreamApiExample {
 
 ## JDK11
 
+### 2.1 JEP 181: Nest-Based Access Control
+#### 简介
+旨在解决 Java 中内部类与其外部类之间访问权限的问题。
+
+传统上，Java 内部类和其外部类需要通过编译器生成桥接方法来访问私有成员，这样既增加了代码复杂性，又带来了安全隐患。JEP 181 通过在 JVM 中引入“嵌套”概念，允许嵌套类直接访问彼此的私有成员，简化了访问控制。
+
+内部、外部类直观感受就是同源，属于一层的事物，对于上层不用过多感知两者区别，跟Tomcat这种层层加载，层间嵌套想法类似。
+
+#### 案例
+```java
+public class Outer {
+    private String outerField = "Outer Field";
+
+    public class Inner {
+        private String innerField = "Inner Field";
+
+        public void accessOuterField() {
+            System.out.println(outerField);  // 访问外部类的私有字段
+        }
+    }
+
+    public void accessInnerField() {
+        Inner inner = new Inner();
+        System.out.println(inner.innerField);  // 访问内部类的私有字段
+    }
+}
+```
+JDK11以前编译之后：
+```cmd
+Compiled from "Outer.java"
+public class com.nju.jdk11.Outer {
+	  private java.lang.String outerField;
+	  public com.nju.jdk11.Outer();
+	  public void accessInnerField();
+	  static java.lang.String access$000(com.nju.jdk11.Outer);
+}
+```
+JDK11编译之后：
+```cmd
+Compiled from "Outer.java"
+public class com.nju.jdk11.Outer {
+	  private java.lang.String outerField;
+	  public com.nju.jdk11.Outer();
+	  public void accessInnerField();
+}
+
+```
+### 2.2 JEP 309: Dynamic Class-File Constants
+引入了动态常量（Dynamic Constants）的概念，通过扩展 Java 类文件格式，使常量池能够包含动态计算的常量。动态常量的类型是 `CONSTANT_Dynamic`，它通过引导方法（Bootstrap Method）动态计算并初始化其值，这个过程就跟动态调用一样，允许在 Java 类文件中定义常量时进行延迟计算，以提高灵活性和效率。
+
+### 2.3 JEP 318: Epsilon: A No-Op Garbage Collector (Experimental)
+开发一个处理内存分配但不实现任何实际内存回收机制的GC。一旦可用的Java堆耗尽，JVM将关闭。
+
+### 2.4 JEP 321: HTTP Client
+
+#### 简介
+对JDK9引入的HTTP Client进行最终的定稿。
+
+引入了一个新的 HTTP 客户端 API，该 API 取代了原有的 `HttpURLConnection`，支持 HTTP/1.1 和 HTTP/2 协议，具备异步编程模型，增强了对高性能和低延迟的支持。
+
+#### 特性
+- 支持 HTTP/2：新的 HTTP 客户端默认支持 HTTP/2，可以更有效地利用网络资源，提供更好的性能。
+- 异步编程模型：支持异步请求和响应处理，使得非阻塞 I/O 操作更加容易。
+- 简洁易用：提供了简洁的 API，使得发送 HTTP 请求和处理响应更加直观和容易。
+- WebSocket 支持：集成了对 WebSocket 的支持，允许客户端和服务器之间的双向通信。
+- 高效资源管理：通过内建的连接池和其他优化手段，更高效地管理网络资源。
+
+#### 案例
+```java
+public class HttpClientExamples {
+    public static void testSyncGet() throws URISyntaxException, IOException, InterruptedException {
+
+        // 创建HttpClient请求
+        HttpClient client = HttpClient.newHttpClient ();
+
+        // 构建get请求
+        HttpRequest request = HttpRequest.newBuilder ()
+                .uri (new URI ("https://www.baidu.com"))
+                .GET ()
+                .build ();
+
+        // 发送请求并接收响应
+        HttpResponse<String> response = client.send (request, HttpResponse.BodyHandlers.ofString ());
+
+        // 打印结果
+        System.out.println ("Response Code : " + response.statusCode ());
+        System.out.println ("Response Body : " + response.body ());
+    }
+
+    public static void testAsyncPost() throws URISyntaxException{
+
+        // 创建HttpClient请求
+        HttpClient client = HttpClient.newHttpClient ();
+
+        // 构建Post请求
+        HttpRequest request = HttpRequest.newBuilder ()
+                .uri (new URI ("https://www.baidu.com"))
+                .POST (HttpRequest.BodyPublishers.noBody ())
+                .header("Content-Type", "application/json")
+                .build ();
+
+        // 发送异步请求
+        CompletableFuture<HttpResponse<String>> response = client.sendAsync (request, HttpResponse.BodyHandlers.ofString ());
+
+        // 异步结果处理
+        response.thenApply (HttpResponse::body)
+                .thenAccept (System.out::println);
+
+        // 保证异步处理完成
+        response.join ();
+    }
+
+    public static void testHttp2Get() throws URISyntaxException, IOException, InterruptedException {
+        // 创建支持 HTTP/2 的 HttpClient 实例
+        HttpClient client = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_2)
+                .build();
+
+        // 构建 GET 请求
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI("https://www.baidu.com"))
+                .GET()
+                .build();
+
+        // 发送请求并接收响应
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // 输出响应状态码和响应体
+        System.out.println("Response Code: " + response.statusCode());
+        System.out.println("Response Body: " + response.body());
+    }
+
+
+        public static void main(String[] args) throws URISyntaxException, IOException, InterruptedException {
+            testSyncGet();
+            testAsyncPost();
+            testHttp2Get();
+    }
+}
+
+```
+
+### 2.5 JEP 323: Local-Variable Syntax for Lambda Parameters
+
+#### 简介
+允许在 lambda 表达式的参数中使用局部变量类型推断。这意味着你可以在 lambda 参数列表中使用 `var `关键字，让编译器自动推断参数的类型。这一改进与 Java 10 引入的局部变量类型推断（即 `var `关键字）保持一致，提高了代码的简洁性和一致性
+
+#### 案例
+```java
+public class VarExample {
+    public static void main(String[] args) {
+        // 示例 1：基本用法
+        List<String> list = Arrays.asList("one", "two", "three");
+
+        // 使用传统方式声明 lambda 参数类型
+        list.forEach((String s) -> System.out.println(s));
+
+        // 使用 var 声明 lambda 参数类型
+        list.forEach((var s) -> System.out.println(s));
+
+        // 示例 2：使用多个参数
+        BiFunction<Integer, Integer, Integer> add = (var x, var y) -> x + y;
+        System.out.println("Sum: " + add.apply(5, 3)); // 输出: Sum: 8
+
+        // 示例 3：结合注解使用
+        // 使用注解和 var 关键字
+        list.forEach((@Deprecated var s) -> System.out.println(s));
+    }
+}
+```
+
+### 2.6 JEP 330: Launch Single-File Source-Code Programs
+
+引入了一种新的发布模式，使得可以直接运行包含 main 方法的单文件 Java 源代码程序，而不需要先编译成字节码，只需运行 `java <filename>.java` 即可。
+
+### 2.7 JEP 333: ZGC: A Scalable Low-Latency Garbage Collector (Experimental)
+ZGC是一个并发的、不分代、基于区域的垃圾收集器，基于标记整理算法。STD仅限于root扫描阶段，因此GC停顿时间不会随着堆或活动集的大小而增加。但是后面带了Experimental，说明还不建议用到生产环境。
+
+旨在实现以下几点：
+- GC暂停时间不会超过10ms；
+- 即能处理几百兆小堆，也能处理几个T的大堆（OMG）；
+- 和G1相比，应用吞吐能力不会下降超过15%；
+- 为未来的GC功能和染色指针、读写屏障优化奠定基础；
+
+需要通过`XX:+UnlockExperimentalVMOptions -XX:+UseZGC`进行设置
