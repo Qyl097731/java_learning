@@ -422,6 +422,63 @@ public class StreamApiExample {
 
 ```
 
+## JDK10
+
+### 2.1 JEP 286: Local-Variable Type Inference
+#### 简介
+引入局部变量类型推断功能，允许在声明局部变量时使用 var 关键字来进行类型推断。
+
+#### 案例
+```java
+public class VarExamples {
+    public static void main(String[] args) {
+        // 传统方式
+        String message1 = "Hello, World!";
+        List<String> list1 = new ArrayList<> ();
+
+        // 使用局部变量类型推断
+        var message2 = "Hello, World!";
+        var list2 = new ArrayList<String>();
+
+        // 传统方式
+        Map<String, Integer> map = new HashMap<> ();
+        for (Map.Entry<String, Integer> entry : map.entrySet()) {
+            String key = entry.getKey();
+            Integer value = entry.getValue();
+            System.out.println(key + " => " + value);
+        }
+
+        // 使用局部变量类型推断
+        for (var entry : map.entrySet()) {
+            var key = entry.getKey();
+            var value = entry.getValue();
+            System.out.println(key + " => " + value);
+        }
+
+        // 传统方式
+        try (InputStream is = new FileInputStream ("file.txt");
+             InputStreamReader isr = new InputStreamReader(is);
+             BufferedReader reader = new BufferedReader(isr)) {
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // 使用局部变量类型推断
+        try (var is = new FileInputStream("file.txt");
+             var isr = new InputStreamReader(is);
+             var reader = new BufferedReader(isr)) {
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+### 2.2 JEP 307: Parallel Full GC for G1
+G1垃圾收集器，可以使用多线程来进行Full GC（` -XX:ParallelGCThreads`）来提升G1的最坏的延迟。
+
+
 ## JDK11
 
 ### 3.1 JEP 181: Nest-Based Access Control
@@ -609,3 +666,91 @@ ZGC是一个并发的、不分代、基于区域的垃圾收集器，基于标�
 - 为未来的GC功能和染色指针、读写屏障优化奠定基础；
 
 需要通过`XX:+UnlockExperimentalVMOptions -XX:+UseZGC`进行设置
+
+## 四、JDK12
+### 4.1 JEP 189: Shenandoah: A Low-Pause-Time Garbage Collector (Experimental)
+新增了一个名为 Shenandoah 的 GC 算法，通过与正在运行的 Java 线程进行并发处理来减少 GC 暂停时间。
+
+使用 Shenandoah 的暂停时间与堆大小无关，这意味着无论堆是 200 MB 还是 200 GB，都将具有相同的暂停时间。
+
+为每个Java对象添加了一个间接指针，使GC线程能够在Java线程运行时压缩堆。标记和压缩是同时执行的，因此只需要暂停Java线程足够长的时间来扫描线程堆栈以查找和更新对象图的根节点。
+
+### 4.2 JEP 325: Switch Expressions (Preview)
+#### 简介
+扩展switch语句，使其既可以用作语句也可以用作表达式，并且这两种形式都可以使用“传统”或“简化”日常编码。
+
+#### 案例
+```java
+public class SwitchExamples {
+
+    private void chooseDayJdk8(int day) {
+        int numLetters;
+        switch (day) {
+            case MONDAY:
+            case FRIDAY:
+            case SUNDAY:
+                numLetters = 6;
+                break;
+            case TUESDAY:
+                numLetters = 7;
+                break;
+            case THURSDAY:
+            case SATURDAY:
+                numLetters = 8;
+                break;
+            case WEDNESDAY:
+                numLetters = 9;
+                break;
+            default:
+                throw new IllegalStateException("Wat: " + day);
+        }
+
+        switch (day) {
+            case MONDAY:
+            case FRIDAY:
+            case SUNDAY:
+                System.out.println(6);
+                break;
+            case TUESDAY:
+                System.out.println(7);
+                break;
+            case THURSDAY:
+            case SATURDAY:
+                System.out.println(8);
+                break;
+            case WEDNESDAY:
+                System.out.println(9);
+                break;
+        }
+
+    }
+
+    private void chooseDayJdk9(int day) {
+        int numLetters = switch (day) {
+            case MONDAY, FRIDAY, SUNDAY -> 6;
+            case TUESDAY                -> 7;
+            case THURSDAY, SATURDAY     -> 8;
+            case WEDNESDAY              -> 9;
+            default -> throw new IllegalStateException ("Unexpected value: " + day);
+        };
+
+        System.out.println (numLetters);
+
+
+        switch (day) {
+            case 1 -> System.out.println("one");
+            case 2 -> System.out.println("two");
+            case 3 -> System.out.println("many");
+        }
+    }
+}
+```
+### 4.3 JEP 344: Abortable Mixed Collections for G1
+G1在混合收集阶段，如果超出了停顿的预期时间，那么混合收集就可以取消。
+
+如果G1一直选择错误的区域进行回收，那么会尝试进一步的混合回收：把回收集合分为强制回收和可选回收两部分。强制回收花费的时间少于预期回收的时间就会进行可选部分的回收。
+
+强制部分大多数都是新生代对象，少部分的老年代对象。大约占了预测回收集合的80%。
+可选部分只包含老年代，大约占预测回收集合的20%。
+
+强制部分和可选部分会随着运行而不断变化。
