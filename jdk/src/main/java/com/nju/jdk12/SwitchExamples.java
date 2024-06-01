@@ -1,4 +1,4 @@
-package com.nju.jdk10;
+package com.nju.jdk12;
 
 import static java.util.Calendar.*;
 
@@ -51,7 +51,7 @@ public class SwitchExamples {
 
     }
 
-    private void chooseDayJdk9(int day) {
+    private void chooseDayJdk12(int day) {
         int numLetters = switch (day) {
             case MONDAY, FRIDAY, SUNDAY -> 6;
             case TUESDAY                -> 7;

@@ -725,7 +725,7 @@ public class SwitchExamples {
 
     }
 
-    private void chooseDayJdk9(int day) {
+    private void chooseDayJdk12(int day) {
         int numLetters = switch (day) {
             case MONDAY, FRIDAY, SUNDAY -> 6;
             case TUESDAY                -> 7;
@@ -736,6 +736,14 @@ public class SwitchExamples {
 
         System.out.println (numLetters);
 
+        int j = switch (day) {
+            case MONDAY  -> 0;
+            case TUESDAY -> 1;
+            default      -> {
+                System.out.println ("yield test");
+                break 2;
+            }
+        };
 
         switch (day) {
             case 1 -> System.out.println("one");
@@ -754,3 +762,85 @@ G1在混合收集阶段，如果超出了停顿的预期时间，那么混合收
 可选部分只包含老年代，大约占预测回收集合的20%。
 
 强制部分和可选部分会随着运行而不断变化。
+
+## JDK 13 
+
+### 5.1 JEP 350: Dynamic CDS Archives
+#### 简介
+扩展应用程序类数据共享，允许在Java应用程序执行结束时对所有加载的应用程序类和库类进行动态归档。
+
+我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，启动成本和内存占用是比较高的。所以Java团队引入了CDS的概念，通过把一些核心类在每个JVM间共享，每个JVM只需要装载自己的应用类，启动时间减少了，另外核心类是共享的，所以JVM的内存占用也减少了。
+
+在JDK10中对CDS进行了扩展，不仅作用于 Boot Class Loader 加载的类，还能作用App Class Loader 或者自定义Class Loader 加载的类。但是需要定义**自定义Dump文件指定需要归档的类列表，整体流程繁琐**。
+
+这次JEP350在JDK10基础上进行扩展，简化手动自定义Dump文件的流程。通过`-XX:ArchiveClassesAtExit `、`-XX:SharedArchiveFile`结合使用即可。
+
+例如，创建hello.jsa:
+```cmd
+% bin/java -XX:ArchiveClassesAtExit=hello.jsa -cp hello.jar Hello
+```
+使用动态归档来进行应用程序启动:
+```cmd
+% bin/java -XX:SharedArchiveFile=hello.jsa -cp hello.jar Hello
+```
+
+### 5.2 ZGC: Uncommit Unused Memory
+#### 简介
+增强ZGC，将未使用的堆内存返回给操作系统。
+
+ZGC当前不会将内存返回给操作系统，即使该内存已经长时间未使用。这种行为对于所有类型的应用程序和环境来说都不是最佳的，尤其是那些需要考虑内存占用的环境。例如：
+- 那些需要根据使用量付费的容器
+- 应用程序可能长时间处于空闲状态并与许多其他应用程序共享或竞争资源的环境。
+- 应用程序在执行期间可能有非常不同的堆空间需求。例如，启动期间所需的堆可能大于稍后在稳定状态执行期间所需的堆。
+
+暂时通过`-XX:ZUncommitDelay=<seconds>`启发式地控制什么时候将未使用的内存归还给操作系统。
+
+### 5.3 JEP 354: Switch Expressions (Second Preview)
+#### 简介
+根据JEP 325发布期间用户的反馈，switch表达式使用yield语句取代了break进行value的返回。
+
+#### 案例
+```java
+    private void chooseDayJdk13(int day) {
+        int j = switch (day) {
+            case MONDAY  -> 0;
+            case TUESDAY -> 1;
+            default      -> {
+                System.out.println ("yield test");
+                yield 2;
+            }
+        };
+
+        int i = switch (day) {
+            case MONDAY  : yield 0;
+            case TUESDAY : yield 1;
+            default :{
+                System.out.println ("yield test");
+                yield 2;
+            }
+        };
+    }
+```
+
+### 5.4 JEP 355: Text Blocks (Preview)
+
+#### 简介
+text block，文本块，是一个多行字符串文字，它避免了对大多数转义序列的需要，以可预测的方式自动格式化字符串，并在需要时让开发人员控制格式。
+
+使用`"""`作为文本块的开始符合结束符，在其中就可以放置多行的字符串，不需要进行任何转义。
+
+#### 案例
+```java
+// 旧版本
+String query = "SELECT `EMP_ID`, `LAST_NAME` FROM `EMPLOYEE_TB`\n" +
+               "WHERE `CITY` = 'INDIANAPOLIS'\n" +
+               "ORDER BY `EMP_ID`, `LAST_NAME`;\n";
+// 新版本               
+String query = """
+               SELECT `EMP_ID`, `LAST_NAME` FROM `EMPLOYEE_TB`
+               WHERE `CITY` = 'INDIANAPOLIS'
+               ORDER BY `EMP_ID`, `LAST_NAME`;
+               """;
+```
+
+
