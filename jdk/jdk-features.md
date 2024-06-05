@@ -844,3 +844,236 @@ String query = """
 ```
 
 
+## JDK 14
+
+### 6.1 JEP 305: Pattern Matching for instanceof (Preview)
+
+#### 简介
+通过模式匹配来增强`instanceof`操作，模式匹配能够让程序员更好地关注`if`断言之后的逻辑，使得这部分逻辑的编写更加安全、简介。
+
+```java
+if (obj instanceof String) {// 1 if断言
+    String s = (String) obj; // 2 强制转换 3 临时变量创建
+    // use s
+}
+```
+
+JEP 305就相当于简化上述过程，让1、2、3三个步骤合在1中，让程序员更好关注后续的use部分。
+
+```java
+if (obj instanceof String s) {
+    // can use s here
+} else {
+    // can't use s here
+}
+```
+
+#### 案例
+
+```java
+// 14以前的版本equals
+@Override public boolean equals(Object o) { 
+    return (o instanceof CaseInsensitiveString) && 
+        ((CaseInsensitiveString) o).s.equalsIgnoreCase(s); 
+}
+
+// 14版本的equals
+@Override public boolean equals(Object o) { 
+    return (o instanceof CaseInsensitiveString cis) && 
+        cis.s.equalsIgnoreCase(s); 
+}
+```
+
+### 6.2 JEP 345: NUMA-Aware Memory Allocation for G1
+
+通过实现非统一的内存访问（NUMA）内存分配来提升G1在大型机器上的性能。
+单一的JVM运行在不同的端口/核心上的时候，内存访问的性能不一致（比如本地内存的访问肯定是优于大多数全局内存访问），导致现在多端口的机器上内存访问出现了性能瓶颈——越远的端口有更大的延迟。
+
+`+XX:+UseNUMA`添加该参数可以让JVM初始化的时候，G1的Region分布的更加均匀。
+
+### 6.3 JEP 349: JFR Event Streaming
+
+#### 简介
+为了对JVM进行持续监控，会暴露JFR（JDK Flight Recorder）的数据。
+
+JFR在之前的JDK版本已经存在了，JVM通过JFR暴露超过500项数据，但是大部分数据需要通过解析log日志才能获取，而不是实时获取。用户想要使用JFR的数据的话，用户必须先开启JFR进行记录，然后停止记录，再将飞行记录的数据Dump到磁盘上，然后解析这个记录文件。跟我们OOM日志一样，需要记录之后再Dump，最后进行解析。
+
+> // 下面这条命令会立即启动JFR并开始使用templayte.jfc的配置收集60s的JVM信息，并输出到output.jfr中。
+// 一旦记录完成之后，就可以复制jfr文件到你的工作环境使用jmc GUI来分析。
+// 它几乎包含了排查JVM问题需要的所有信息，包括堆dump时的异常信息等。
+jcmd <PID> JFR.start name=test duration=60s settings=template.jfc filename=output.jfr
+
+对于JVM的持续监控没那么方便（比如大盘监控），为此进行了优化。
+
+`jdk.jfr.consumer`中实现jfr事件的异步订阅，简单点说就是事件到来之后有一个专门的handler会进行处理。
+
+#### 案例
+`RecordingStream`类实现了接口`jdk.jfr.consumer.EventStream`，它提供了一种统一的方式来过滤和消费事件，而不管源是实时流还是磁盘上的文件。
+```java
+public interface EventStream extends AutoCloseable {
+  public static EventStream openRepository();
+  public static EventStream openRepository(Path directory);
+  public static EventStream openFile(Path file);
+
+  void setStartTime(Instant startTime);
+  void setEndTime(Instant endTime);
+  void setOrdered(boolean ordered);
+  void setReuse(boolean reuse);
+
+  void onEvent(Consumer<RecordedEvent> handler);
+  void onEvent(String eventName, Consumer<RecordedEvent handler);
+  void onFlush(Runnable handler);
+  void onClose(Runnable handler);
+  void onError(Runnable handler);
+  void remove(Object handler);
+
+  void start();
+  void startAsync();
+
+  void awaitTermination();
+  void awaitTermination(Duration duration);
+  void close();
+}
+```
+```java
+// 打印总体CPU使用情况和超过10毫秒的争用锁。
+try (var rs = new RecordingStream()) {
+  rs.enable("jdk.CPULoad").withPeriod(Duration.ofSeconds(1));
+  rs.enable("jdk.JavaMonitorEnter").withThreshold(Duration.ofMillis(10));
+  rs.onEvent("jdk.CPULoad", event -> {
+    System.out.println(event.getFloat("machineTotal"));
+  });
+  rs.onEvent("jdk.JavaMonitorEnter", event -> {
+    System.out.println(event.getClass("monitorClass"));
+  });
+  rs.start();
+}
+```
+
+### 6.4 JEP 352: Non-Volatile Mapped Byte Buffers
+增加JDK特有的文件映射模式，为了能够通过`FileChannel API`创建指向非易失性内存的`MappedByteBuffer`实例
+
+### 6.5 JEP 358: Helpful NullPointerExceptions
+
+#### 简介
+能更准确地描述哪个变量是null，以此改进JVM生成的NPE的排查效率。
+
+#### 案例
+```java
+// a[i]/a[i][j] is null?
+a[i][j][k] = 99;
+```
+JDK 14以前
+```cmd
+Exception in thread "main" java.lang.NullPointerException
+    at Prog.main(Prog.java:5
+```
+
+JDK 14开始
+```cmd
+Exception in thread "main" java.lang.NullPointerException:
+        Cannot load from object array because "a[i][j]" is null
+    at Prog.main(Prog.java:5)
+```
+
+### 6.6 JEP 359: Records (Preview)
+
+#### 简介
+`records`提供了一种紧凑的语法来声明类，这些类是浅层不可变数据的透明持有者。
+
+JAVA经常被抱怨太繁琐了，很大一部分原因都是类导致的（只不过是充当简单聚合的普通“数据载体”），但是却要为他们编写很多重复的、低价值的、易错的代码（`constructors, accessors, equals(), hashCode(), toString()...`)。当然现在很多的注解（lombok的`@Data`的产生其实也有这部分原因）
+
+`records`可以简单、清晰、简洁地声明不可变、行为良好的数据聚合。<b>但是`records`不能扩展其他类，不能声明其他实例字段（静态变量可以）</b>
+
+如果`records`是内部类，则默认是`static`类型，避免实例给`records`偷偷加了一些参数。
+
+#### 案例
+```java
+// JDK 14 以前
+class Point{
+    private final int x;
+    private final int y;
+
+    public Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Point range = (Point) o;
+        return x == range.x && y == range.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "Range{" +
+                "x =" + x +
+                ", y =" + y +
+                "}";
+    }
+}
+// JDK 14 
+record Point(int x, int y) { }
+```
+
+`record Point(int x, int y) { }`根据里面的参数x、y做以下的事情：
+
+- 生成x、y的访问方法
+- 生成equals、hashCode、toString...
+- x、y默认已经作为Point这个数据组件的私有字段
+- 生成唯一的构造函数，全参构造函数。
+
+
+### 6.7 JEP 361: Switch Expressions
+把JDK13中的Switch Expression（Preview）变为正式版本了。
+
+### 6.8 JEP 363: Remove the Concurrent Mark Sweep (CMS) Garbage Collector
+
+CMS不再维护，并在JDK14之后移除
+
+### 6.9 JEP 366: Deprecate the ParallelScavenge + SerialOld GC Combination
+
+Parallel Scavenge 和 Serial Old 这一对垃圾回收算法组合被废弃。因为这种组合只适用于新生代非常大而老年代非常少的部署，这种组合的带来的优势远小于维护的成本。
+
+即`-XX:+UseParallelGC -XX:-UseParallelOldGC`被废弃。
+
+### 6.10 JEP 368: Text Blocks (Second Preview)
+
+#### 简介
+在JDK13预览版本的基础上增加了两种转义序列。
+
+- 换行符（'\'）
+- 空格（'\s'）
+
+#### 案例
+```java
+\\ 换行符
+String text = """
+                Lorem ipsum dolor sit amet, consectetur adipiscing \
+                elit, sed do eiusmod tempor incididunt ut labore \
+                et dolore magna aliqua.\
+                """
+
+\\ 空格 对齐
+String colors = """
+    red  \s
+    green\s
+    blue \s
+    """;
+```
