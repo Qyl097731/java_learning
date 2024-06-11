@@ -1077,3 +1077,140 @@ String colors = """
     blue \s
     """;
 ```
+
+## JDK15
+### 7.1 JEP 360: Sealed Classes (Preview)
+#### 简介
+
+密封类、接口能够指定哪些类或者接口负责实现它们，相较于访问修饰符的声明方式更加直接有力。
+
+Java中超类并非都是为了复用，有些情况下可能只是简化部分子类的实现，但是Java假设复用总是最终目的。封装类和接口就是为了对这个假设进行一定的放宽，指定某些子类才需要实现该超类，其他类不能实现该超类。
+
+是对超类访问和实现两种维度的解耦。
+
+#### 案例
+```java
+// 密封类
+public abstract sealed class Shape permits Circle, Rectangle, Square {
+    // 抽象类的定义
+}
+
+public final class Circle extends Shape {
+    // Circle 的定义
+}
+
+public sealed class Rectangle extends Shape permits FilledRectangle {
+    // Rectangle 的定义
+}
+
+public final class Square extends Shape {
+    // Square 的定义
+}
+
+public non-sealed class FilledRectangle extends Rectangle {
+    // FilledRectangle 的定义
+}
+
+// 密封接口
+public sealed interface Service permits DatabaseService, NetworkService {
+    void perform();
+}
+
+public final class DatabaseService implements Service {
+    @Override
+    public void perform() {
+        // 实现方法
+    }
+}
+
+public sealed class NetworkService implements Service permits SecureNetworkService {
+    @Override
+    public void perform() {
+        // 实现方法
+    }
+}
+
+public non-sealed class SecureNetworkService extends NetworkService {
+    @Override
+    public void perform() {
+        // 实现方法
+    }
+}
+
+```
+
+### 7.2 JEP 371: Hidden Classes
+引入隐藏类，不能被任何其他类直接使用。主要是为了给框架层面使用的，可以独立于任何类被卸载。
+
+### 7.3 JEP 374: Deprecate and Disable Biased Locking
+默认情况下禁用偏向锁，并弃用所有相关的命令行选项。
+
+偏向锁对于老的应用有较明显的性能优化。老应用会使用HashTable、Vector...等集合类进行同步访问控制，偏向锁会减少CAS竞争锁的执行，直到出现其他线程并发抢占锁的时候才会进行锁升级。
+
+但是现在的应用都会有新的集合类：HashMap、ArrayList或者并发集合类等等，上述的性能优化其实不明显了。
+
+应用升级后，伴随着线程池并废弃线程锁的情况下性能更优。加上偏向锁的维护成本，就废弃了偏向锁。
+
+### 7.4 JEP 377: ZGC: A Scalable Low-Latency Garbage Collector (Production)
+ZGC从实验阶段变为了正式版本了。
+
+### 7.5 JEP 379: Shenandoah: A Low-Pause-Time Garbage Collector (Production)
+Shenandoah 从实验阶段变为正式版本了。
+
+### 7.6 JEP 378: Text Blocks
+#### 简介
+Text Block最终版，跟之前的Preview没区别。
+
+#### 案例
+String新增了几个API
+
+- String::stripIndent()
+- String::translateEscapes()
+- String::formatted(Object... args)
+```java
+// 所有的String相关的参数都可以用
+String code = """
+              public void print($type o) {
+                  System.out.println(Objects.toString(o));
+              }
+              """.replace("$type", type);
+              
+String code = String.format("""
+              public void print(%s o) {
+                  System.out.println(Objects.toString(o));
+              }
+              """, type);
+
+String source = """
+                public void print(%s object) {
+                    System.out.println(Objects.toString(object));
+                }
+                """.formatted(type);
+
+```
+
+### 7.7 JEP 384: Records (Second Preview)
+#### 简介
+对`Records`的完善。新增对于局部`records`的使用。
+
+中间变量有以下方法：一种选择是像许多程序今天声明辅助类那样，声明静态嵌套的 "辅助" 记录。更方便的一种选择是在方法内部声明一个记录，靠近操作这些变量的代码。这也是`Records`新增局部使用方式的原因。
+
+<b>局部记录的是静态的，所以不允许访问非静态的参数、变量、方法等，但是局部记录很有用，为局部枚举和局部接口地搭配使用打开了大门</b>。
+#### 案例
+一个商人和每月销售额的聚合通过局部记录 MerchantSales 来建模。使用这个记录可以提高后续流操作的可读性：
+```java
+List<Merchant> findTopMerchants(List<Merchant> merchants, int month) {
+    // 局部记录
+    record MerchantSales(Merchant merchant, double sales) {}
+
+    return merchants.stream()
+        .map(merchant -> new MerchantSales(merchant, computeSales(merchant, month)))
+        .sorted((m1, m2) -> Double.compare(m2.sales(), m1.sales()))
+        .map(MerchantSales::merchant)
+        .collect(toList());
+}
+
+```
+
+
+
