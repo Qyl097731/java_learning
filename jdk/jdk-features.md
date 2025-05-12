@@ -667,7 +667,7 @@ ZGC是一个并发的、不分代、基于区域的垃圾收集器，基于标�
 
 需要通过`XX:+UnlockExperimentalVMOptions -XX:+UseZGC`进行设置
 
-## 四、JDK12
+## JDK12
 ### 4.1 JEP 189: Shenandoah: A Low-Pause-Time Garbage Collector (Experimental)
 新增了一个名为 Shenandoah 的 GC 算法，通过与正在运行的 Java 线程进行并发处理来减少 GC 暂停时间。
 
@@ -763,7 +763,7 @@ G1在混合收集阶段，如果超出了停顿的预期时间，那么混合收
 
 强制部分和可选部分会随着运行而不断变化。
 
-## JDK 13 
+## JDK13 
 
 ### 5.1 JEP 350: Dynamic CDS Archives
 #### 简介
@@ -844,7 +844,7 @@ String query = """
 ```
 
 
-## JDK 14
+## JDK14
 
 ### 6.1 JEP 305: Pattern Matching for instanceof (Preview)
 
@@ -1211,6 +1211,222 @@ List<Merchant> findTopMerchants(List<Merchant> merchants, int month) {
 }
 
 ```
+
+## JDK16
+### 8.1 JEP 338: Vector API (Incubator)
+#### 简介
+引入了向量API（Vector API），这是一个孵化器特性，用于提供更好地利用硬件向量单元的能力，以提高数值计算的性能。
+
+#### 案例
+```java
+class VectorAddition {
+    // 使用 Float 类型的 256 位向量
+    private final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_256;
+
+    public void calculate() {
+        float[] a = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+        float[] b = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+        float[] c = new float[a.length];
+
+        // 使用向量化进行加法操作
+        int i = 0;
+        for (; i < SPECIES.loopBound(a.length); i += SPECIES.length()) {
+            var va = FloatVector.fromArray(SPECIES, a, i);
+            var vb = FloatVector.fromArray(SPECIES, b, i);
+            var vc = va.add(vb);
+            vc.intoArray(c, i);
+        }
+        for (float v : c) {
+            System.out.print(v + " ");
+        }
+        // 处理剩余的元素
+        for (; i < a.length; i++) {
+            c[i] = a[i] + b[i];
+        }
+
+        // 打印结果
+        for (float v : c) {
+            System.out.print(v + " ");
+        }
+    }
+}
+
+class VectorMultiplication {
+    // 使用 Float 类型的 256 位向量
+    private static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_256;
+
+    public void calculate() {
+        float[] a = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+        float[] b = {2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f};
+        float[] c = new float[a.length];
+
+        // 使用向量化进行乘法操作
+        int i = 0;
+        for (; i < SPECIES.loopBound(a.length); i += SPECIES.length()) {
+            var va = FloatVector.fromArray(SPECIES, a, i);
+            var vb = FloatVector.fromArray(SPECIES, b, i);
+            var vc = va.mul(vb);
+            vc.intoArray(c, i);
+        }
+
+        // 处理剩余的元素
+        for (; i < a.length; i++) {
+            c[i] = a[i] * b[i];
+        }
+
+        // 打印结果
+        for (float v : c) {
+            System.out.print(v + " ");
+        }
+    }
+}
+```
+
+### 8.2 JEP 376: ZGC: Concurrent Thread-Stack Processing
+进一步优化ZGC，允许并发处理线程栈，以提高性能。
+
+现在仍在GC safe点进行的操作有：根节点处理和有时间限制的标记终止操作的子集。
+
+### 8.3 JEP 393: Foreign-Memory Access API (Third Incubator)
+用于访问非Java内存的API，可以提供更直接、安全的堆外内存访问。
+这次更新主要变化：
+
+-  `MemorySegment` 和 `MemoryAddress` 这两接口的解耦
+- `MemoryAddress`在一些对于通用的静态内存访问案例中可以减少`VarHandler`的使用
+- 支持段共享，并用`Cleaner`来注册段
+
+### 8.4 JEP 394: Pattern Matching for instanceof
+
+#### 简介
+模式匹配来增强`instanceof`正式转正，使得对象类型匹配更加安全简洁。
+
+相较于之前的preview版本进行了两项改进：
+
+- 简化模式变量为final的限制来减少本地变量和模式变量的不一致。
+- 类型匹配的时候如果是子类关系将报编译错误。
+
+#### 案例
+```java
+public class PatternExample {
+    public static void main(String[] args) {
+        class Example1 {
+            String s;
+
+            void test1(Object o) {
+                if (o instanceof String s) {
+                    System.out.println (s);      // Field s is shadowed
+                    s = s + "\n";               // Assignment to pattern variable 与成员变量S没有关系，相当于是新方法
+                } else {
+                    System.out.println (s);          // Refers to field s
+                }
+            }
+        }
+
+        new Example1().test1("Hello");
+        new Example1().test1(new Object());
+    }
+}
+```
+### 8.5 JEP 395: Records
+#### 简介
+`Records`转正，主要用来简化数据单元的封装，解耦类的访问和数据单元。
+
+相较于之前的preview版本进行了以下改进：
+- 引入了声明本地记录类、本地枚举类和本地接口的能力
+- 支持通过`overrider`关键字来对`Record`内部方法的重写
+- 支持内部类中声明静态成员，主要是支持`Record`类
+- 默认所有包都会引入`Record`，所以在引入自定义的`Record`的时候需要指定全类名以避免歧义
+#### 案例
+```java
+public class TransactionProcessor {
+    // Local record for transaction
+    record Transaction(TransactionType type, double amount, TransactionStatus status) {}
+    // Local enum for transaction types
+    enum TransactionType {
+        DEPOSIT, WITHDRAWAL
+    }
+
+    // Local enum for transaction status
+    enum TransactionStatus {
+        PENDING, COMPLETED, FAILED
+    }
+
+    // Local interface for processing transactions
+    interface TransactionHandler {
+        void handle(Transaction transaction);
+    }
+
+    public void processTransactions(List<Transaction> transactions) {
+        // Implementing the local interface
+        TransactionHandler handler = transaction -> {
+            if (transaction.type() == TransactionType.DEPOSIT) {
+                System.out.println("Processing deposit of $" + transaction.amount());
+            } else if (transaction.type() == TransactionType.WITHDRAWAL) {
+                System.out.println("Processing withdrawal of $" + transaction.amount());
+            }
+        };
+
+        // Process each transaction
+        for (Transaction transaction : transactions) {
+            handler.handle(transaction);
+            // Assuming all transactions are completed for this example
+            transaction = new Transaction(transaction.type(), transaction.amount(), TransactionStatus.COMPLETED);
+            System.out.println("Transaction status: " + transaction.status());
+        }
+    }
+
+    public static void main(String[] args) {
+        List<Transaction> transactions = new ArrayList<>();
+        transactions.add(new Transaction(TransactionType.DEPOSIT, 100.0, TransactionStatus.PENDING));
+        transactions.add(new Transaction(TransactionType.WITHDRAWAL, 50.0, TransactionStatus.PENDING));
+
+        new TransactionProcessor().processTransactions(transactions);
+    }
+}
+```
+
+### 8.6 JEP 397: Sealed Classes (Second Preview)
+
+#### 简介
+密封类、接口能够指定哪些类或者接口负责实现它们，相较于访问修饰符的声明方式更加直接有力。
+
+Java中超类并非都是为了复用，有些情况下可能只是简化部分子类的实现，但是Java假设复用总是最终目的。封装类和接口就是为了对这个假设进行一定的放宽，指定某些子类才需要实现该超类，其他类不能实现该超类。
+
+是对超类访问和实现两种维度的解耦。
+
+具体改进如下：
+- 子类不能是封装类、接口的实现
+- 增强引用转换来更严格地检验封装类型层次结构，主要是规范`instanceof`类型判别
+
+#### 案例
+```java
+public class SealClassExamples {
+
+    public sealed interface Expr
+            permits ConstantExpr, PlusExpr, TimesExpr, NegExpr {  }
+
+//    public final class ConstantExpr implements Expr { ... }
+//    public final class PlusExpr     implements Expr { ... }
+//    public final class TimesExpr    implements Expr { ... }
+//    public final class NegExpr      implements Expr { ... }
+    // Record 和 封装类结合
+    public record ConstantExpr(int i)       implements Expr {  }
+    public record PlusExpr(Expr a, Expr b)  implements Expr {  }
+    public record TimesExpr(Expr a, Expr b) implements Expr {  }
+    public record NegExpr(Expr e)           implements Expr {  }
+}
+
+// 封装类和模式匹配结合
+Shape rotate(Shape shape, double angle) {
+    return switch (shape) {   // pattern matching switch
+        case Circle c    -> c; 
+        case Rectangle r -> r.rotate(angle);
+        case Square s    -> s.rotate(angle);
+        // no default needed!
+    }
+}
+```
+
 
 
 
